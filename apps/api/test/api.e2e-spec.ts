@@ -9,6 +9,7 @@ import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import cookieParser from "cookie-parser";
 import { unzipSync } from "fflate";
+import { SignJWT } from "jose";
 import request from "supertest";
 import {
   devices,
@@ -1044,5 +1045,228 @@ describe("admin", () => {
       .set("Cookie", cookie)
       .send({ versionCode: 99, policy: licensedPolicy })
       .expect(404);
+  });
+});
+
+// Phase 7 QA: the multi-device and expiry scenarios from the build spec. These
+// run last because the version-disabled case toggles the shared KJV catalog.
+describe("qa: multi-device and expiry", () => {
+  const SESSION_KEY = new TextEncoder().encode("test-session-secret-at-least-32-characters");
+  const TICKET_KEY = new TextEncoder().encode("test-download-secret-at-least-32-characters");
+
+  async function expiredSessionToken(email: string): Promise<string> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    if (!user) throw new Error(`No user row for ${email}`);
+    return new SignJWT({ email, groups: [] })
+      .setProtectedHeader({ alg: "HS256" })
+      .setSubject(user.id)
+      .setIssuedAt(Math.floor(Date.now() / 1000) - 7200)
+      .setExpirationTime(Math.floor(Date.now() / 1000) - 3600)
+      .sign(SESSION_KEY);
+  }
+
+  async function expiredDownloadTicket(email: string): Promise<string> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    if (!user) throw new Error(`No user row for ${email}`);
+    return new SignJWT({ versionId: "kjv", versionCode: 1 })
+      .setProtectedHeader({ alg: "HS256" })
+      .setSubject(user.id)
+      .setIssuer("holyword-api")
+      .setAudience("content-download")
+      .setIssuedAt(Math.floor(Date.now() / 1000) - 7200)
+      .setExpirationTime(Math.floor(Date.now() / 1000) - 3600)
+      .sign(TICKET_KEY);
+  }
+
+  it("keeps both devices' edits when two devices race on one note", async () => {
+    const cookie = await login(SYNC_EMAIL);
+    const noteId = randomUUID();
+    await request(server)
+      .post("/v1/notes")
+      .set("Cookie", cookie)
+      .send({ id: noteId, body: "baseline", hlc: hlc() })
+      .expect(201);
+
+    const pushEdit = (deviceId: string, body: string) =>
+      authed("post", "/v1/sync/push", SYNC_EMAIL).send({
+        deviceId,
+        ops: [
+          {
+            opId: randomUUID(),
+            entity: "note",
+            entityId: noteId,
+            op: "upsert",
+            payload: {
+              body,
+              verseId: null,
+              reference: null,
+              title: null,
+              folderId: null,
+            },
+            hlc: hlc(),
+            baseVersion: 1,
+          },
+        ],
+      });
+
+    // Device A's edit lands first; device B pushed from the same base, so it is
+    // flagged as a conflict for the user to resolve — and because B's HLC is
+    // newer, it still wins last-write-wins. The conflict row keeps the stale
+    // device's payload verbatim so no text is lost.
+    const deviceA = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const deviceB = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    const first = await pushEdit(deviceA, "device A edit").expect(200);
+    expect(first.body.results[0]).toMatchObject({ status: "applied", serverVersion: 2 });
+
+    const second = await pushEdit(deviceB, "device B edit").expect(200);
+    expect(second.body.results[0].status).toBe("conflict");
+    expect(second.body.results[0].conflictId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(second.body.results[0].serverVersion).toBe(3);
+
+    const list = await authed("get", "/v1/notes", SYNC_EMAIL).expect(200);
+    const note = list.body.items.find((item: { id: string }) => item.id === noteId);
+    expect(note.body).toBe("device B edit");
+    expect(note.serverVersion).toBe(3);
+
+    const [conflict] = await db
+      .select()
+      .from(noteConflicts)
+      .where(eq(noteConflicts.noteId, noteId));
+    expect(conflict?.localPayload).toMatchObject({ body: "device B edit" });
+    expect(conflict?.remotePayload).toMatchObject({ body: "device A edit" });
+  });
+
+  it("rejects an expired bearer session token", async () => {
+    const token = await expiredSessionToken(READER_EMAIL);
+    const response = await request(server)
+      .get("/v1/auth/session")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(401);
+    expect(response.body.code).toBe("unauthorized");
+  });
+
+  it("rejects an expired session cookie", async () => {
+    const token = await expiredSessionToken(READER_EMAIL);
+    const response = await request(server)
+      .get("/v1/auth/session")
+      .set("Cookie", `holyword_session=${token}`)
+      .expect(401);
+    expect(response.body.code).toBe("unauthorized");
+  });
+
+  it("rejects an expired download ticket at the package route", async () => {
+    const ticket = await expiredDownloadTicket(READER_EMAIL);
+    const response = await request(server)
+      .get(`/v1/content/packages/kjv/1/package.zip?ticket=${encodeURIComponent(ticket)}`)
+      .expect(403);
+    expect(response.body.code).toBe("invalid-download-ticket");
+  });
+
+  it("rejects a valid ticket presented for a different package", async () => {
+    const [user] = await db.select().from(users).where(eq(users.email, READER_EMAIL));
+    const foreignTicket = await new SignJWT({ versionId: "niv", versionCode: 3 })
+      .setProtectedHeader({ alg: "HS256" })
+      .setSubject(user!.id)
+      .setIssuer("holyword-api")
+      .setAudience("content-download")
+      .setIssuedAt(Math.floor(Date.now() / 1000))
+      .setExpirationTime(Math.floor(Date.now() / 1000) + 300)
+      .sign(TICKET_KEY);
+    const response = await request(server)
+      .get(`/v1/content/packages/kjv/1/package.zip?ticket=${encodeURIComponent(foreignTicket)}`)
+      .expect(403);
+    expect(response.body.code).toBe("invalid-download-ticket");
+  });
+
+  it("refuses a device that is registered to another account", async () => {
+    const reader = await login(READER_EMAIL);
+    const sharedDevice = "99999999-9999-4999-8999-999999999999";
+    await request(server)
+      .post("/v1/versions/kjv/download-ticket")
+      .set("Cookie", reader)
+      .send({ deviceId: sharedDevice, platform: "web" })
+      .expect(200);
+
+    const other = await login(SYNC_EMAIL);
+    const response = await request(server)
+      .post("/v1/versions/kjv/download-ticket")
+      .set("Cookie", other)
+      .send({ deviceId: sharedDevice, platform: "web" })
+      .expect(403);
+    expect(response.body.code).toBe("device-not-owned");
+  });
+
+  it("stops serving a version as soon as it is disabled", async () => {
+    const admin = await login(ADMIN_EMAIL);
+    const cookie = await login(SYNC_EMAIL);
+    const device = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+
+    // A ticket issued while the version is enabled downloads fine.
+    const ticket = await request(server)
+      .post("/v1/versions/kjv/download-ticket")
+      .set("Cookie", cookie)
+      .send({ deviceId: device, platform: "web" })
+      .expect(200);
+    const packageUrl = new URL(ticket.body.url as string);
+    await request(server)
+      .get(`${packageUrl.pathname}${packageUrl.search}`)
+      .buffer(true)
+      .parse((response, callback) => {
+        const chunks: Buffer[] = [];
+        response.on("data", (chunk: Buffer) => chunks.push(chunk));
+        response.on("end", () => callback(null, Buffer.concat(chunks)));
+        response.on("error", (error: Error) => callback(error, Buffer.alloc(0)));
+      })
+      .expect(200);
+
+    await request(server).post("/v1/admin/versions/kjv/disable").set("Cookie", admin).expect(200);
+
+    // Catalog, reading and ticket issuance all stop immediately. An
+    // already-issued ticket stays cryptographically valid until its short TTL
+    // (DOWNLOAD_TOKEN_TTL_SECONDS, default 300s) expires, which is the accepted
+    // trade-off for stateless tickets at the edge.
+    const catalog = await request(server).get("/v1/versions").set("Cookie", cookie).expect(200);
+    const ids = catalog.body.versions.map((version: { versionId: string }) => version.versionId);
+    expect(ids).not.toContain("kjv");
+
+    await request(server)
+      .get("/v1/versions/kjv/books/GEN/chapters/1")
+      .set("Cookie", cookie)
+      .expect(404);
+
+    const denied = await request(server)
+      .post("/v1/versions/kjv/download-ticket")
+      .set("Cookie", cookie)
+      .send({ deviceId: device, platform: "web" })
+      .expect(403);
+    expect(denied.body.code).toBe("version-disabled");
+
+    // Restore the seeded public-domain policy so the catalog is back to normal.
+    const restored = await request(server)
+      .post("/v1/admin/versions/kjv/enable")
+      .set("Cookie", admin)
+      .send({
+        versionCode: 1,
+        policy: {
+          status: "public-domain",
+          offlineDownload: true,
+          maxDevices: null,
+          maxVersesPerCopy: null,
+          maxVersesPerShare: null,
+          encryption: "none",
+          regions: null,
+          copyright: "King James Version, public domain",
+          attribution: "King James Version",
+        },
+      })
+      .expect(200);
+    expect(restored.body).toMatchObject({ enabled: true, licenceStatus: "public-domain" });
+
+    const retry = await request(server)
+      .post("/v1/versions/kjv/download-ticket")
+      .set("Cookie", cookie)
+      .send({ deviceId: device, platform: "web" })
+      .expect(200);
+    expect(retry.body.packageVersion).toBe(1);
   });
 });

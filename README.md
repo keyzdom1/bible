@@ -3,9 +3,10 @@
 Offline-first Bible app for web (PWA), Android and iOS, backed by AWS.
 Tagline: **Read · Grow · Be Closer to God.**
 
-This repository contains **Phases 1-4 (Foundation, NestJS backend, content pipeline, and offline
-engine)** of the build described in [`docs/HolyWord-Build-Prompt.docx`](docs/HolyWord-Build-Prompt.docx)
-and the [architecture infographic](docs/architecture-infographic.png).
+This repository contains **all seven phases (Foundation, NestJS backend, content pipeline,
+offline engine, web PWA and mobile app, Terraform + CI/CD, QA) of the build described in
+[`docs/HolyWord-Build-Prompt.docx`](docs/HolyWord-Build-Prompt.docx) and the
+[architecture infographic](docs/architecture-infographic.png).
 
 ## What works today
 
@@ -50,12 +51,42 @@ and the [architecture infographic](docs/architecture-infographic.png).
   - A framework-neutral REST client shared by web and mobile.
 - **`docs/openapi.yaml`** — the contract for auth, health, versions, reading, search,
   content delivery, study, sync, account and admin APIs.
+- **`apps/web`** — the Next.js 16 PWA:
+  - Installable, offline-capable service worker; WCAG AA contrast verified by tests.
+  - Reader, library, study (bookmarks, highlights, notes, folders), plans and search,
+    all driven by the shared offline engine (Dexie/IndexedDB).
+  - Local-first reads: downloaded text is served even when the catalog disables the
+    version; the server stays the final gate for anything new.
+  - Background sync registration while operations are pending.
+- **`apps/mobile`** — the Expo app:
+  - SQLite/FTS5 adapter over the same offline engine; per-version attribution and
+    licence rendering; WCAG AA contrast verified by tests.
+- **`infra/`** — Terraform (pinned 1.9.8, AWS provider `~> 5.60`):
+  - Bootstrap stack (state bucket, DynamoDB lock, KMS) plus reusable modules for VPC,
+    RDS PostgreSQL, OpenSearch, Cognito, Elastic Beanstalk, S3 + CloudFront, WAF and
+    monitoring/backup.
+  - `dev` and `prod` environments; WAF in `us-east-1` via an aliased provider.
+  - Written and validated only (`terraform validate` green); no `terraform apply` has
+    been run and no AWS credentials are used in this repository.
+- **`.github/workflows`** — `ci.yml` (verify + terraform validate on every push),
+  `deploy.yml` (builds the EB bundles and deploys; fails fast until repository env vars
+  are configured after the first apply) and `terraform.yml` (plan/apply with a
+  reviewed plan).
+- **`scripts/build-bundle.mjs`** — deterministic Elastic Beanstalk deploy bundles:
+  - `api`: `pnpm deploy --prod` with a hoisted (junction-free) `node_modules`, pruned
+    sources, a module-resolution smoke test and a start script.
+  - `web`: Next.js `output: "standalone"` server plus `static/` and `public/`.
+  - Zips with forward-slash entries on every platform (Windows' bsdtar, Linux `zip`).
+- **QA** — automated multi-device/expiry/disabled-version coverage plus a manual
+  device matrix in [`docs/qa-checklist.md`](docs/qa-checklist.md); a best-effort
+  Lighthouse runner in `scripts/lighthouse.mjs`.
 - **`content/packages/kjv/1`** — the generated public-domain KJV package: 66 books,
   1,189 chapters, 31,102 verses, with a checksummed manifest and versification map.
 - **Fixtures** — a synthetic KJV-shaped package used by the older unit tests; no licensed
   text is committed.
 
-**221 tests pass** — 78 core, 19 database, 23 content, 52 API and 49 offline-engine tests.
+**277 tests pass** — 86 core, 19 database, 23 content, 59 API, 52 offline-engine,
+27 web and 11 mobile tests.
 
 ## Prerequisites
 
@@ -173,10 +204,12 @@ supplied.
 | -------------------------------------- | --------------------------------------------- |
 | `pnpm check`                           | format check + lint + typecheck + tests       |
 | `pnpm test`                            | All tests through Turborepo                   |
-| `pnpm build`                           | Build packages and the API                    |
+| `pnpm build`                           | Build packages, apps and the API              |
 | `pnpm --filter @holyword/api dev`      | Watch-mode API server                         |
-| `pnpm --filter @holyword/api test`     | 52 API unit and end-to-end tests (PGlite)     |
-| `pnpm --filter @holyword/offline test` | 49 offline-engine tests                       |
+| `pnpm --filter @holyword/api test`     | 59 API unit and end-to-end tests (PGlite)     |
+| `pnpm --filter @holyword/offline test` | 52 offline-engine tests                       |
+| `pnpm --filter @holyword/web test`     | 27 PWA tests (PWA, a11y, sync, catalog)       |
+| `pnpm --filter @holyword/mobile test`  | 11 Expo tests (attribution, a11y)             |
 | `pnpm gen:api`                         | Regenerate API types from `docs/openapi.yaml` |
 | `pnpm content:fetch-kjv`               | Fetch and checksum the pinned KJV source      |
 | `pnpm content:build-kjv`               | Build the immutable KJV package               |
@@ -188,6 +221,10 @@ supplied.
 | `pnpm db:seed`                         | Seed the version catalog and reading plans    |
 | `pnpm db:generate`                     | Generate a migration after editing the schema |
 | `pnpm format`                          | Prettier                                      |
+| `node scripts/build-bundle.mjs api`    | EB deploy bundle for the API (`build/*.zip`)  |
+| `node scripts/build-bundle.mjs web`    | EB deploy bundle for the PWA (`build/*.zip`)  |
+| `node scripts/lighthouse.mjs [url]`    | Best-effort Lighthouse scores (`--strict`)    |
+| `.\scripts\validate-infra.ps1`         | fmt + init + validate every Terraform root    |
 
 The API test script runs Jest with `--experimental-vm-modules` because PGlite loads its
 WASM engine through a dynamic import. `pnpm check` invokes the same script.
@@ -197,18 +234,26 @@ WASM engine through a dynamic import. `pnpm check` invokes the same script.
 ```
 .
 ├─ apps/
-│  └─ api/                    # NestJS REST API + 52 unit/e2e tests
+│  ├─ api/                    # NestJS REST API + 59 unit/e2e tests
+│  ├─ web/                    # Next.js 16 PWA + 27 tests
+│  └─ mobile/                 # Expo app + 11 tests
 ├─ packages/
 │  ├─ core/                   # shared types, parser, sync protocol, API types
 │  │  ├─ src/api/schema.d.ts  # generated from docs/openapi.yaml
-│  │  └─ test/                # 78 tests
+│  │  └─ test/                # 86 tests
 │  ├─ content/                # USFM/OSIS/JSON ingestion, package builder, publish
 │  │  └─ test/                # 23 tests
 │  ├─ offline/                # Dexie/SQLite storage, search, downloads and sync
-│  │  └─ test/                # 49 tests across both adapters
+│  │  └─ test/                # 52 tests across both adapters
 │  └─ db/                     # Drizzle schema, migration, seed
 │     ├─ drizzle/             # generated SQL + snapshot/journal
 │     └─ test/                # 19 tests, including WASM PostgreSQL migration
+├─ infra/                     # Terraform: bootstrap, modules, dev + prod
+├─ scripts/
+│  ├─ build-bundle.mjs        # Elastic Beanstalk deploy bundles (api | web)
+│  ├─ lighthouse.mjs          # best-effort Lighthouse scores
+│  ├─ validate-infra.ps1      # terraform fmt + init + validate
+│  └─ setup-db.ps1            # local PostgreSQL role/database
 ├─ content/
 │  ├─ packages/kjv/1/         # public-domain KJV package + checksums
 │  └─ sources/kjv/            # pinned source metadata and provenance
@@ -216,9 +261,60 @@ WASM engine through a dynamic import. `pnpm check` invokes the same script.
 ├─ docs/
 │  ├─ openapi.yaml
 │  ├─ adr/
+│  ├─ infra.md                # environments, apply order, CI/CD setup
+│  ├─ runbook-restore.md      # RDS/PITR and content-bucket restore drills
+│  ├─ qa-checklist.md         # automated coverage + manual device matrix
 │  ├─ HolyWord-Build-Prompt.docx
 │  └─ architecture-infographic.png
-└─ .github/workflows/ci.yml
+└─ .github/workflows/
+   ├─ ci.yml                  # verify + terraform validate on every push
+   ├─ deploy.yml              # build bundles and deploy to Elastic Beanstalk
+   └─ terraform.yml           # plan/apply with a reviewed plan
+```
+
+## Infrastructure and deployment
+
+Terraform (pinned 1.9.8, `hashicorp/aws ~> 5.60`) lives in `infra/`:
+
+- `infra/bootstrap` — one-time per account/region: state S3 bucket, DynamoDB lock
+  table and KMS key.
+- `infra/modules` — VPC, RDS PostgreSQL (PITR + automated backups), OpenSearch with
+  fine-grained access control, Cognito user pool, Elastic Beanstalk (Node.js 22 on
+  AL2023), S3 + CloudFront for content delivery, WAF (us-east-1, aliased provider) and
+  monitoring/alarms + AWS Backup.
+- `infra/environments/dev` and `infra/environments/prod` — two Beanstalk environments
+  (API and web PWA) behind one CloudFront distribution: `/v1*` and `/health*` route to
+  the API, everything else to the web app.
+
+Secrets are assembled at apply time from the (untracked) `terraform.tfvars` and injected
+as Elastic Beanstalk environment variables — never committed. `docs/infra.md` documents
+the apply order, the GitHub environment/variable mapping for `deploy.yml` and the
+post-apply steps. `docs/runbook-restore.md` covers RDS point-in-time restore and
+content-bucket recovery drills.
+
+The stacks have been written and `terraform validate` is green for every root
+(`.\scripts\validate-infra.ps1`); no `terraform apply` has been run from this
+repository yet, so all AWS-side values (domain names, Cognito ids, CloudFront keys) are
+placeholders until the first apply.
+
+CI/CD: `ci.yml` runs format/lint/typecheck/tests plus `terraform validate` on every
+push; `deploy.yml` builds both deploy bundles and deploys them to the Elastic Beanstalk
+environments (it fails fast with a clear message until the repository environment
+variables exist); `terraform.yml` runs a plan on demand and applies from `master` with a
+manually reviewed plan.
+
+## QA
+
+Automated QA scenarios run in the suites themselves (two devices racing on one note,
+expired bearer tokens/cookies, expired and cross-package download tickets, runtime
+version disable/enable, device re-assignment, and a downloaded version that the catalog
+disables). Everything that needs real hardware or a network is in
+[`docs/qa-checklist.md`](docs/qa-checklist.md): airplane mode, kill-mid-download, low
+storage, slow networks, licence spot checks, accessibility and the Lighthouse gate:
+
+```powershell
+node scripts/lighthouse.mjs http://localhost:3000            # advisory scores
+node scripts/lighthouse.mjs https://<app_url> --strict       # fails below 80
 ```
 
 ## API overview
@@ -254,8 +350,10 @@ note-conflict rules.
   not change the row.
 - Deletes are tombstones; pull responses mark them with `tombstone: true` and
   `payload: null`.
-- A note edited with a stale `baseVersion` returns `409` and both versions are preserved in
-  `note_conflicts`.
+- A note edited over REST with a stale `baseVersion` returns `409` and both versions are
+  preserved in `note_conflicts`. In a sync push the same situation is reported as
+  `status: "conflict"` with a `conflictId` while the newer HLC still wins last-write-wins;
+  the conflict row keeps the losing payload verbatim for in-app resolution.
 - Pull is ordered by the server sequence and reports `hasMore`.
 - Entity ids identify the row: bookmarks/highlights/notes/folders use their UUID,
   reading progress uses the version id, plan progress uses its UUID with `planId` in the
@@ -354,22 +452,21 @@ committed local mirror.
 - The KJV is public domain in the United States; Crown letters patent apply in the United
   Kingdom. This is a product guardrail, not legal advice.
 
-## Current limitations (Phase 4)
+## Current limitations
 
-- Web and mobile clients are **Phase 5**. The offline engine is a tested shared library, not
-  yet mounted in a PWA or Expo UI.
 - The Expo SQLite path is exercised through the structural `SqliteDriver` backed by
   `node:sqlite`; `ExpoSqliteDriver` itself is a thin adapter and has not run on a physical
-  iOS or Android device in this environment.
+  iOS or Android device in this environment. The web PWA is exercised in browser-based
+  tests, not on a device farm.
 - Licensed NKJV, NIV, NLT and MSG files have not been supplied, and no licence terms have
   been confirmed. They remain disabled/unlicensed; catalog-only ESV, NASB, AMP, CSB and
   NRSV are likewise metadata only.
-- Real AWS S3, CloudFront and OpenSearch endpoints and credentials are unavailable. The
-  publisher, signer and deployment are covered by mocks/unit tests, but no production
-  upload or distribution has been performed.
+- Terraform is written and validated but **has not been applied**; no AWS account,
+  credentials or real endpoints are involved yet. Domain names, Cognito ids and
+  CloudFront key material are placeholders documented in `docs/infra.md`.
 - AES package encryption and the separate licensed key-delivery flow are not implemented.
-  A package manifest may declare encryption, but publishing or installing such a package is
-  rejected.
+  A package manifest may declare encryption, but publishing or installing such a package
+  is rejected.
 - The local JWT-ticket route is the only delivery path exercised end-to-end, including
   byte-range resume. The CloudFront branch is unit-tested, not deployed. Production
   packaging must also mount or copy the read-only package mirror used by chapter reads and
@@ -380,6 +477,8 @@ committed local mirror.
   migration. Native PostgreSQL remains the development/production target.
 - Region checks trust the CloudFront header, which must be stripped from client requests
   at the edge in production.
+- Lighthouse (`scripts/lighthouse.mjs`) is best-effort: without a local Chrome it reports
+  the run as skipped; `--strict` is for environments where a score gate must fail.
 
 ## Phase status
 
@@ -389,9 +488,57 @@ committed local mirror.
 | 2. Backend (NestJS)               | ✅ complete |
 | 3. Content pipeline + KJV package | ✅ complete |
 | 4. Offline engine                 | ✅ complete |
-| 5. Web PWA, then Expo app         | next        |
-| 6. Terraform + CI/CD              | pending     |
-| 7. QA and hardening               | pending     |
+| 5. Web PWA, then Expo app         | ✅ complete |
+| 6. Terraform + CI/CD              | ✅ complete |
+| 7. QA and hardening               | ✅ complete |
+
+## Phase 7 exit gate
+
+- [x] Multi-device QA tests: two devices racing on one note keep both texts (stale base
+      is flagged as a conflict, newest HLC wins, the loser's payload is preserved).
+- [x] Expired bearer token, expired cookie, expired download ticket and a valid ticket
+      presented for a different package are all rejected.
+- [x] A version disabled at runtime disappears from the catalog, chapter reads 404,
+      ticket issuance 403, and re-enabling restores it through the audited admin path.
+- [x] A device registered to another account is refused (`device-not-owned`).
+- [x] A downloaded version that the catalog disables keeps serving local text, fetches
+      nothing new, and the server remains the final gate.
+- [x] `docs/qa-checklist.md` covers the manual matrix (airplane mode, kill mid-download,
+      two devices, expired tokens, low storage, slow networks, disabled after download),
+      licence spot checks, accessibility and the release gate.
+- [x] `scripts/lighthouse.mjs` reports scores and only fails with `--strict`.
+- [x] 277 tests pass; `pnpm check` is green.
+
+## Phase 6 exit gate
+
+- [x] Terraform for dev and prod: bootstrap (state, lock, KMS), VPC, RDS with PITR,
+      OpenSearch (FGAC), Cognito, Elastic Beanstalk (Node.js 22 on AL2023), S3 +
+      CloudFront with OAC, WAF (us-east-1) and monitoring/backup modules.
+- [x] Two Elastic Beanstalk environments (API, web) behind one CloudFront distribution
+      with path-based routing; secrets injected at apply time, never committed.
+- [x] `terraform fmt -check` and `terraform validate` green for every root
+      (`.\scripts\validate-infra.ps1`).
+- [x] Deterministic deploy bundles for both apps (`node scripts/build-bundle.mjs api|web`),
+      verified locally: workspace dependencies resolve inside the API bundle and the web
+      bundle starts `apps/web/server.js` with static and public assets merged; both zips
+      use forward-slash entries so they extract correctly on Linux.
+- [x] CI on `master`: verify + terraform validate; deploy workflow builds the bundles and
+      deploys to Elastic Beanstalk; terraform workflow plans and applies with a reviewed
+      plan.
+- [x] `docs/infra.md` (environments, apply order, GitHub variable mapping) and
+      `docs/runbook-restore.md` (PITR, content restore) written.
+
+## Phase 5 exit gate
+
+- [x] Next.js PWA: installable, offline-capable service worker, WCAG AA contrast tests,
+      background sync while operations are pending.
+- [x] Reader, library, study, plans and search drive the shared offline engine; local
+      first reads, catalog-driven availability, licensed copy/share rules enforced.
+- [x] Expo app on the same offline engine with SQLite/FTS5, per-version attribution and
+      licence rendering, WCAG AA contrast tests.
+- [x] Disabled-after-download behaviour: downloaded text stays readable locally, nothing
+      new is fetched, the server answers for anything not on the device.
+- [x] 277 tests pass (27 web, 11 mobile added); `pnpm build` and `pnpm check` are green.
 
 ## Phase 4 exit gate
 
