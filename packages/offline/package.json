@@ -1,0 +1,50 @@
+{
+  "name": "@holyword/offline",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Offline-first engine: downloads, local content, search, sync queue and sync client",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./dexie": {
+      "types": "./dist/dexie.d.ts",
+      "import": "./dist/dexie.js",
+      "require": "./dist/dexie.cjs"
+    },
+    "./sqlite": {
+      "types": "./dist/sqlite.d.ts",
+      "import": "./dist/sqlite.js",
+      "require": "./dist/sqlite.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "eslint src test"
+  },
+  "dependencies": {
+    "@holyword/core": "workspace:*",
+    "@noble/hashes": "^1.8.0",
+    "dexie": "^4.2.1",
+    "fflate": "^0.8.2",
+    "minisearch": "^7.2.0"
+  },
+  "devDependencies": {
+    "fake-indexeddb": "^6.2.4",
+    "tsup": "^9.0.0",
+    "typescript": "5.9.3",
+    "vitest": "^3.2.7"
+  }
+}

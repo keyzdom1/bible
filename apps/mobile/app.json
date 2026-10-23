@@ -1,0 +1,59 @@
+{
+  "expo": {
+    "name": "HolyWord",
+    "slug": "holyword",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "holyword",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#081B3A"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "app.holyword.reader",
+      "infoPlist": {
+        "UIBackgroundModes": ["fetch"],
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "app.holyword.reader",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#081B3A"
+      },
+      "permissions": ["RECEIVE_BOOT_COMPLETED", "WAKE_LOCK"],
+      "edgeToEdgeEnabled": true
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-sqlite",
+        {
+          "enableFTS": true
+        }
+      ],
+      "expo-secure-store",
+      "expo-background-fetch",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "backgroundColor": "#081B3A",
+          "resizeMode": "contain"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false
+    },
+    "extra": {
+      "router": {}
+    }
+  }
+}

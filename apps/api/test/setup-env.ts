@@ -1,0 +1,9 @@
+process.env.NODE_ENV = "test";
+process.env.AUTH_DEV_MODE = "true";
+process.env.SESSION_SECRET = "test-session-secret-at-least-32-characters";
+process.env.DOWNLOAD_TOKEN_SECRET = "test-download-secret-at-least-32-characters";
+process.env.SESSION_COOKIE_NAME = "holyword_session";
+process.env.SESSION_TTL_SECONDS = "3600";
+process.env.ADMIN_EMAILS = "admin@example.com";
+process.env.CONTENT_BASE_URL = "https://content.test/v1/content";
+process.env.WEB_ORIGIN = "http://localhost:3000";

@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "versionId": "synthetic-kjv",
+  "versionCode": 1,
+  "name": "Synthetic KJV Fixture",
+  "abbreviation": "KJV-FX",
+  "language": "en",
+  "languageName": "English",
+  "direction": "ltr",
+  "licence": {
+    "status": "public-domain",
+    "offlineDownload": true,
+    "maxDevices": null,
+    "maxVersesPerCopy": null,
+    "maxVersesPerShare": 500,
+    "encryption": "none",
+    "regions": null,
+    "copyright": "Public domain in the United States. Synthetic fixture text for tests only.",
+    "attribution": "HolyWord development fixture",
+    "licenceNote": "Not a real Bible package. Used by automated tests."
+  },
+  "versificationId": "kjv",
+  "books": [
+    {
+      "code": "GEN",
+      "name": "Genesis",
+      "chapters": 2,
+      "verses": 6,
+      "file": "books/GEN.ndjson",
+      "bytes": 747,
+      "sha256": "ee72eb01a94ace54320155c202a4f53d96c205789253149b609e49c36dd749f8"
+    }
+  ],
+  "totals": {
+    "books": 1,
+    "chapters": 2,
+    "verses": 6
+  },
+  "builtAt": "2026-10-20T00:00:00.000Z",
+  "builderVersion": "0.1.0",
+  "source": {
+    "name": "Synthetic fixture",
+    "licenceNote": "Generated for tests; not scripture."
+  }
+}

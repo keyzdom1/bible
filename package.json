@@ -1,0 +1,40 @@
+{
+  "name": "holyword",
+  "version": "0.1.0",
+  "private": true,
+  "description": "HolyWord Bible App — offline-first Bible application",
+  "packageManager": "pnpm@10.34.7",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test",
+    "gen:api": "openapi-typescript docs/openapi.yaml -o packages/core/src/api/schema.d.ts",
+    "db:generate": "pnpm --filter @holyword/db db:generate",
+    "db:migrate": "pnpm --filter @holyword/db db:migrate",
+    "db:seed": "pnpm --filter @holyword/db db:seed",
+    "content:fetch-kjv": "pnpm --filter @holyword/content fetch-kjv",
+    "content:build-kjv": "pnpm --filter @holyword/content build-kjv",
+    "content:verify-kjv": "pnpm --filter @holyword/content verify-kjv",
+    "content:ingest": "pnpm --filter @holyword/content ingest --",
+    "content:publish": "pnpm --filter @holyword/content publish --",
+    "content:verify": "pnpm --filter @holyword/content verify --",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@types/node": "^22.20.5",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^10.1.8",
+    "openapi-typescript": "^7.13.0",
+    "prettier": "^3.9.10",
+    "turbo": "^2.11.9",
+    "typescript": "5.9.3",
+    "typescript-eslint": "^8.72.0"
+  }
+}

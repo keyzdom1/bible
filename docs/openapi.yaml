@@ -1,0 +1,1575 @@
+openapi: 3.1.0
+info:
+  title: HolyWord API
+  version: 0.1.0
+  description: |
+    Offline-first Bible API. Bible text is served as signed, checksummed packages;
+    this API provides authentication, version catalog, study data and delta sync.
+
+    Authentication: the web client exchanges a Cognito ID token for an httpOnly session
+    cookie (`POST /v1/auth/session`). Mobile clients send the Cognito access token as a
+    bearer token. Cookies are first-party because `/api/*` is routed to this service.
+  license:
+    name: Proprietary
+servers:
+  - url: http://localhost:4000
+    description: Local development
+  - url: https://api.holyword.app
+    description: Production
+security:
+  - cookieAuth: []
+  - bearerAuth: []
+tags:
+  - name: Ops
+  - name: Auth
+  - name: Versions
+  - name: Reading
+  - name: Search
+  - name: Content
+  - name: Study
+  - name: Sync
+  - name: Account
+  - name: Admin
+paths:
+  /health:
+    get:
+      tags: [Ops]
+      operationId: health
+      summary: Liveness probe used by Elastic Beanstalk
+      security: []
+      responses:
+        "200":
+          description: Service is running
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    const: ok
+  /v1/auth/session:
+    post:
+      tags: [Auth]
+      operationId: createSession
+      summary: Exchange a Cognito ID token for an httpOnly session cookie
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SessionRequest"
+      responses:
+        "200":
+          description: Session created; the cookie is set on this response.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    get:
+      tags: [Auth]
+      operationId: getSession
+      summary: Current session (works with a cached session while offline)
+      responses:
+        "200":
+          description: Current session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    delete:
+      tags: [Auth]
+      operationId: deleteSession
+      summary: Sign out and clear the session cookie
+      security: []
+      responses:
+        "204":
+          description: Signed out
+  /v1/versions:
+    get:
+      tags: [Versions]
+      operationId: listVersions
+      summary: List the version catalog
+      description: Disabled and unlicensed versions are hidden unless `includeDisabled=true`; they are returned with `enabled=false` and cannot be downloaded.
+      parameters:
+        - name: includeDisabled
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: Version catalog
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [versions]
+                properties:
+                  versions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Version"
+  /v1/versions/{versionId}:
+    get:
+      tags: [Versions]
+      operationId: getVersion
+      summary: Version metadata (available even while disabled)
+      parameters:
+        - $ref: "#/components/parameters/VersionId"
+      responses:
+        "200":
+          description: Version details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Version"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/versions/{versionId}/download-ticket:
+    post:
+      tags: [Versions]
+      operationId: createDownloadTicket
+      summary: Authorise a package download and return short-lived signed URLs
+      description: |
+        Enforces licence policy: enabled flag, entitlement, offline permission, device
+        limit and regional restriction. The ticket is short-lived and bound to the user.
+      parameters:
+        - $ref: "#/components/parameters/VersionId"
+        - name: CloudFront-Viewer-Country
+          in: header
+          required: false
+          description: Two-letter viewer country, injected by CloudFront; drives regional licence checks.
+          schema:
+            type: string
+            pattern: "^[A-Za-z]{2}$"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [deviceId]
+              properties:
+                deviceId:
+                  type: string
+                  format: uuid
+                platform:
+                  type: string
+                  enum: [web, ios, android]
+      responses:
+        "200":
+          description: Signed download ticket
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DownloadTicket"
+        "403":
+          description: Licence or entitlement denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: Content package is not published or failed integrity verification
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /v1/versions/{versionId}/books/{book}/chapters/{chapter}:
+    get:
+      tags: [Reading]
+      operationId: getChapter
+      summary: Read one chapter online from the published package
+      parameters:
+        - $ref: "#/components/parameters/VersionId"
+        - name: book
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^[A-Z1-3]{3}$"
+        - name: chapter
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Chapter content with licence notices
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Chapter"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/search:
+    get:
+      tags: [Search]
+      operationId: search
+      summary: Search online (OpenSearch) or describe a reference lookup
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 200
+        - name: versionId
+          in: query
+          schema:
+            type: string
+        - name: scope
+          in: query
+          schema:
+            type: string
+            enum: [version, all-versions, topic]
+            default: version
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResponse"
+  /v1/content/packages/{versionId}/{versionCode}/package.zip:
+    get:
+      tags: [Content]
+      operationId: downloadContentPackage
+      summary: Download an immutable package archive with a short-lived ticket
+      description: |
+        Local development mirror of the private S3/CloudFront objects. The query-string
+        ticket is issued by `POST /v1/versions/{versionId}/download-ticket` after licence,
+        entitlement and device checks. Production uses a CloudFront custom-policy signed
+        URL for the same object; package bytes are never public. The endpoint advertises
+        `Accept-Ranges: bytes` and supports one resumable byte range per request.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/VersionId"
+        - name: versionCode
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: ticket
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: Range
+          in: header
+          required: false
+          description: Single byte range, for example `bytes=1048576-`.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ZIP archive containing the manifest, versification and book NDJSON files
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+            Accept-Ranges:
+              schema:
+                type: string
+                enum: [bytes]
+            Content-Length:
+              schema:
+                type: integer
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        "206":
+          description: Partial ZIP archive satisfying a single `Range` request
+          headers:
+            Content-Range:
+              schema:
+                type: string
+            Content-Length:
+              schema:
+                type: integer
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        "403":
+          description: Ticket is missing, invalid, expired or for another package
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "416":
+          description: The requested byte range is not satisfiable
+          headers:
+            Content-Range:
+              schema:
+                type: string
+        "503":
+          description: Package is not published or failed integrity verification
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /v1/content/packages/{versionId}/{versionCode}/manifest.json:
+    get:
+      tags: [Content]
+      operationId: downloadContentManifest
+      summary: Fetch a signed package manifest
+      description: |
+        Returns the exact manifest bytes whose SHA-256 is the package checksum. Clients
+        verify every book file against the manifest before importing it.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/VersionId"
+        - name: versionCode
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: ticket
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Package manifest
+          headers:
+            X-Checksum-Sha256:
+              description: SHA-256 of the returned manifest bytes
+              schema:
+                type: string
+                pattern: "^[a-f0-9]{64}$"
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "403":
+          description: Ticket is missing, invalid, expired or for another package
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: Package is not published or failed integrity verification
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /v1/bookmarks:
+    get:
+      tags: [Study]
+      operationId: listBookmarks
+      parameters:
+        - $ref: "#/components/parameters/UpdatedSince"
+      responses:
+        "200":
+          description: Bookmarks
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Bookmark"
+    post:
+      tags: [Study]
+      operationId: createBookmark
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookmarkInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bookmark"
+  /v1/bookmarks/{id}:
+    patch:
+      tags: [Study]
+      operationId: updateBookmark
+      parameters:
+        - $ref: "#/components/parameters/EntityId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookmarkInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bookmark"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      tags: [Study]
+      operationId: deleteBookmark
+      parameters:
+        - $ref: "#/components/parameters/EntityId"
+      responses:
+        "204":
+          description: Deleted (tombstone)
+  /v1/highlights:
+    get:
+      tags: [Study]
+      operationId: listHighlights
+      parameters:
+        - $ref: "#/components/parameters/UpdatedSince"
+      responses:
+        "200":
+          description: Highlights
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Highlight"
+    post:
+      tags: [Study]
+      operationId: createHighlight
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HighlightInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Highlight"
+  /v1/highlights/{id}:
+    patch:
+      tags: [Study]
+      operationId: updateHighlight
+      parameters:
+        - $ref: "#/components/parameters/EntityId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HighlightInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Highlight"
+    delete:
+      tags: [Study]
+      operationId: deleteHighlight
+      parameters:
+        - $ref: "#/components/parameters/EntityId"
+      responses:
+        "204":
+          description: Deleted (tombstone)
+  /v1/notes:
+    get:
+      tags: [Study]
+      operationId: listNotes
+      parameters:
+        - $ref: "#/components/parameters/UpdatedSince"
+      responses:
+        "200":
+          description: Notes
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Note"
+    post:
+      tags: [Study]
+      operationId: createNote
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NoteInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Note"
+        "409":
+          description: Concurrent edit; both versions preserved as a conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conflict"
+  /v1/notes/{id}:
+    patch:
+      tags: [Study]
+      operationId: updateNote
+      parameters:
+        - $ref: "#/components/parameters/EntityId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NoteInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Note"
+        "409":
+          description: Concurrent edit; both versions preserved as a conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conflict"
+    delete:
+      tags: [Study]
+      operationId: deleteNote
+      parameters:
+        - $ref: "#/components/parameters/EntityId"
+      responses:
+        "204":
+          description: Deleted (tombstone)
+  /v1/folders:
+    get:
+      tags: [Study]
+      operationId: listFolders
+      parameters:
+        - $ref: "#/components/parameters/UpdatedSince"
+      responses:
+        "200":
+          description: Folders
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Folder"
+    post:
+      tags: [Study]
+      operationId: createFolder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FolderInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Folder"
+  /v1/folders/{id}:
+    patch:
+      tags: [Study]
+      operationId: updateFolder
+      parameters:
+        - $ref: "#/components/parameters/EntityId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FolderInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Folder"
+    delete:
+      tags: [Study]
+      operationId: deleteFolder
+      parameters:
+        - $ref: "#/components/parameters/EntityId"
+      responses:
+        "204":
+          description: Deleted (tombstone)
+  /v1/plans:
+    get:
+      tags: [Study]
+      operationId: listPlans
+      responses:
+        "200":
+          description: Published reading plans
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ReadingPlan"
+  /v1/plans/{planId}:
+    get:
+      tags: [Study]
+      operationId: getPlan
+      parameters:
+        - name: planId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Reading plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadingPlan"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/plans/{planId}/progress:
+    get:
+      tags: [Study]
+      operationId: getPlanProgress
+      parameters:
+        - name: planId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Progress for this plan
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PlanProgress"
+    put:
+      tags: [Study]
+      operationId: updatePlanProgress
+      parameters:
+        - name: planId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlanProgressInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanProgress"
+  /v1/reading-progress:
+    get:
+      tags: [Study]
+      operationId: getReadingProgress
+      responses:
+        "200":
+          description: Last reading position for every version
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ReadingProgress"
+    put:
+      tags: [Study]
+      operationId: updateReadingProgress
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReadingProgressInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadingProgress"
+  /v1/preferences:
+    get:
+      tags: [Study]
+      operationId: getPreferences
+      responses:
+        "200":
+          description: User preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Preferences"
+    put:
+      tags: [Study]
+      operationId: updatePreferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PreferencesInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Preferences"
+  /v1/sync/push:
+    post:
+      tags: [Sync]
+      operationId: pushChanges
+      summary: Push queued local changes (idempotent by opId)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushRequest"
+      responses:
+        "200":
+          description: Per-operation results and the new cursor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PushResponse"
+        "409":
+          description: One or more operations conflicted; both versions preserved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PushResponse"
+  /v1/sync/pull:
+    get:
+      tags: [Sync]
+      operationId: pullChanges
+      summary: Pull changes since the device cursor
+      parameters:
+        - name: cursor
+          in: query
+          schema:
+            type: string
+            default: "0"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 200
+      responses:
+        "200":
+          description: Changes and the next cursor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PullResponse"
+  /v1/account:
+    delete:
+      tags: [Account]
+      operationId: deleteAccount
+      summary: Delete the account and all user data
+      responses:
+        "202":
+          description: Deletion scheduled
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /v1/account/export:
+    get:
+      tags: [Account]
+      operationId: exportAccount
+      summary: Export all user data as JSON
+      responses:
+        "200":
+          description: Account export
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+  /v1/admin/versions/{versionId}/enable:
+    post:
+      tags: [Admin]
+      operationId: enableVersion
+      summary: Enable a version after the licence is confirmed (audited)
+      parameters:
+        - $ref: "#/components/parameters/VersionId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VersionEnableRequest"
+      responses:
+        "200":
+          description: Enabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Version"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /v1/admin/versions/{versionId}/disable:
+    post:
+      tags: [Admin]
+      operationId: disableVersion
+      summary: Disable a version (audited)
+      parameters:
+        - $ref: "#/components/parameters/VersionId"
+      responses:
+        "200":
+          description: Disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Version"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /v1/admin/audit-log:
+    get:
+      tags: [Admin]
+      operationId: listAuditLog
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        "200":
+          description: Audit entries
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AuditEntry"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: holyword_session
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    VersionId:
+      name: versionId
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^[a-z0-9][a-z0-9-]*$"
+    EntityId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    UpdatedSince:
+      name: updatedSince
+      in: query
+      description: ISO timestamp for incremental fetches
+      schema:
+        type: string
+        format: date-time
+  responses:
+    Unauthorized:
+      description: Missing or expired session
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Conflict:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Conflict"
+  schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          examples: [unauthorized]
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+    Conflict:
+      type: object
+      required: [code, message, conflictId]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        conflictId:
+          type: string
+          format: uuid
+    SessionRequest:
+      type: object
+      required: [idToken]
+      properties:
+        idToken:
+          type: string
+          description: Cognito ID token from email/password or Google sign-in
+    Session:
+      type: object
+      required: [userId, email, expiresAt]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        displayName:
+          type: [string, "null"]
+        expiresAt:
+          type: string
+          format: date-time
+    Version:
+      type: object
+      required:
+        - versionId
+        - versionCode
+        - name
+        - abbreviation
+        - language
+        - languageName
+        - direction
+        - enabled
+        - licenceStatus
+        - verseCount
+        - copyright
+        - attribution
+      properties:
+        versionId:
+          type: string
+        versionCode:
+          type: integer
+        name:
+          type: string
+        abbreviation:
+          type: string
+        language:
+          type: string
+        languageName:
+          type: string
+        direction:
+          type: string
+          enum: [ltr, rtl]
+        enabled:
+          type: boolean
+        licenceStatus:
+          type: string
+          enum: [public-domain, licensed, unlicensed]
+        verseCount:
+          type: integer
+        downloadBytes:
+          type: integer
+        copyright:
+          type: string
+        attribution:
+          type: string
+        paraphrase:
+          type: boolean
+          default: false
+    Verse:
+      type: object
+      required: [id, book, chapter, verse, text]
+      properties:
+        id:
+          type: string
+          pattern: "^[A-Z1-3]{3}\\.\\d{1,3}\\.\\d{1,3}$"
+          examples: [JHN.3.16]
+        book:
+          type: string
+        chapter:
+          type: integer
+        verse:
+          type: integer
+        text:
+          type: string
+    Chapter:
+      type: object
+      required: [versionId, book, bookName, chapter, verses, copyright, attribution]
+      properties:
+        versionId:
+          type: string
+        book:
+          type: string
+        bookName:
+          type: string
+        chapter:
+          type: integer
+        verses:
+          type: array
+          items:
+            $ref: "#/components/schemas/Verse"
+        copyright:
+          type: string
+        attribution:
+          type: string
+    DownloadTicket:
+      type: object
+      required: [url, manifestUrl, expiresAt, packageVersion, checksum]
+      properties:
+        url:
+          type: string
+          format: uri
+        manifestUrl:
+          type: string
+          format: uri
+        expiresAt:
+          type: string
+          format: date-time
+        packageVersion:
+          type: integer
+        checksum:
+          type: string
+          pattern: "^[a-f0-9]{64}$"
+    SearchHit:
+      type: object
+      required: [verseId, versionId, book, chapter, verse, text]
+      properties:
+        verseId:
+          type: string
+        versionId:
+          type: string
+        book:
+          type: string
+        chapter:
+          type: integer
+        verse:
+          type: integer
+        text:
+          type: string
+    SearchResponse:
+      type: object
+      required: [query, scope, total, results, engine]
+      properties:
+        query:
+          type: string
+        scope:
+          type: string
+          enum: [version, all-versions, topic]
+        total:
+          type: integer
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchHit"
+        engine:
+          type: string
+          enum: [opensearch, local]
+          description: Backend that produced the results; local is the offline package mirror fallback.
+    BookmarkInput:
+      type: object
+      required: [id, verseId, versionId, hlc]
+      properties:
+        id:
+          type: string
+          format: uuid
+        verseId:
+          type: string
+          examples: [JHN.3.16]
+        versionId:
+          type: string
+        label:
+          type: [string, "null"]
+        hlc:
+          type: string
+    Bookmark:
+      allOf:
+        - $ref: "#/components/schemas/BookmarkInput"
+        - type: object
+          required: [createdAt, updatedAt, serverVersion]
+          properties:
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+            deletedAt:
+              type: [string, "null"]
+            serverVersion:
+              type: integer
+    HighlightInput:
+      type: object
+      required: [id, verseId, versionId, color, hlc]
+      properties:
+        id:
+          type: string
+          format: uuid
+        verseId:
+          type: string
+        versionId:
+          type: string
+        color:
+          type: string
+          enum: [gold, cyan, emerald, royal-red, purple]
+        startOffset:
+          type: [integer, "null"]
+        endOffset:
+          type: [integer, "null"]
+        hlc:
+          type: string
+    Highlight:
+      allOf:
+        - $ref: "#/components/schemas/HighlightInput"
+        - type: object
+          required: [createdAt, updatedAt, serverVersion]
+          properties:
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+            deletedAt:
+              type: [string, "null"]
+            serverVersion:
+              type: integer
+    NoteInput:
+      type: object
+      required: [id, body, hlc]
+      properties:
+        id:
+          type: string
+          format: uuid
+        verseId:
+          type: [string, "null"]
+        reference:
+          type: [string, "null"]
+        title:
+          type: [string, "null"]
+        body:
+          type: string
+        folderId:
+          type: [string, "null"]
+          format: uuid
+        hlc:
+          type: string
+        baseVersion:
+          type: integer
+    Note:
+      allOf:
+        - $ref: "#/components/schemas/NoteInput"
+        - type: object
+          required: [createdAt, updatedAt, serverVersion]
+          properties:
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+            deletedAt:
+              type: [string, "null"]
+            serverVersion:
+              type: integer
+    FolderInput:
+      type: object
+      required: [id, name, hlc]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        parentId:
+          type: [string, "null"]
+          format: uuid
+        hlc:
+          type: string
+    Folder:
+      allOf:
+        - $ref: "#/components/schemas/FolderInput"
+        - type: object
+          required: [createdAt, updatedAt, serverVersion]
+          properties:
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+            deletedAt:
+              type: [string, "null"]
+            serverVersion:
+              type: integer
+    PlanDay:
+      type: object
+      required: [day, title, references]
+      properties:
+        day:
+          type: integer
+        title:
+          type: string
+        references:
+          type: array
+          items:
+            type: string
+    ReadingPlan:
+      type: object
+      required: [id, slug, title, description, dayCount, schedule]
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        dayCount:
+          type: integer
+        schedule:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlanDay"
+    PlanProgressInput:
+      type: object
+      required: [id, dayNumber, hlc]
+      properties:
+        id:
+          type: string
+          format: uuid
+        dayNumber:
+          type: integer
+          minimum: 1
+        completedAt:
+          type: [string, "null"]
+          format: date-time
+        hlc:
+          type: string
+    PlanProgress:
+      allOf:
+        - $ref: "#/components/schemas/PlanProgressInput"
+        - type: object
+          required: [planId, updatedAt, serverVersion]
+          properties:
+            planId:
+              type: string
+              format: uuid
+            updatedAt:
+              type: string
+              format: date-time
+            serverVersion:
+              type: integer
+    ReadingProgressInput:
+      type: object
+      required: [versionId, book, chapter, hlc]
+      properties:
+        versionId:
+          type: string
+        book:
+          type: string
+        chapter:
+          type: integer
+          minimum: 1
+        verse:
+          type: [integer, "null"]
+        hlc:
+          type: string
+    ReadingProgress:
+      allOf:
+        - $ref: "#/components/schemas/ReadingProgressInput"
+        - type: object
+          required: [updatedAt, serverVersion]
+          properties:
+            updatedAt:
+              type: string
+              format: date-time
+            serverVersion:
+              type: integer
+    PreferencesInput:
+      type: object
+      required: [hlc]
+      properties:
+        theme:
+          type: string
+          enum: [system, light, dark]
+        readingTheme:
+          type: string
+          enum: [light, sepia, dark]
+        fontScale:
+          type: integer
+          minimum: 80
+          maximum: 200
+        activeVersionId:
+          type: [string, "null"]
+        lastLocation:
+          type: [object, "null"]
+          properties:
+            versionId:
+              type: string
+            book:
+              type: string
+            chapter:
+              type: integer
+            verse:
+              type: integer
+        hlc:
+          type: string
+    Preferences:
+      allOf:
+        - $ref: "#/components/schemas/PreferencesInput"
+        - type: object
+          required: [updatedAt, serverVersion]
+          properties:
+            updatedAt:
+              type: string
+              format: date-time
+            serverVersion:
+              type: integer
+    SyncOperation:
+      type: object
+      required: [opId, entity, entityId, op, hlc]
+      properties:
+        opId:
+          type: string
+          format: uuid
+        entity:
+          type: string
+          enum:
+            - bookmark
+            - highlight
+            - note
+            - folder
+            - reading-plan-progress
+            - reading-progress
+            - preference
+        entityId:
+          type: string
+          maxLength: 200
+        op:
+          type: string
+          enum: [upsert, delete]
+        payload:
+          type: [object, "null"]
+          additionalProperties: true
+        hlc:
+          type: string
+        baseVersion:
+          type: integer
+    PushRequest:
+      type: object
+      required: [deviceId, ops]
+      properties:
+        deviceId:
+          type: string
+          format: uuid
+        ops:
+          type: array
+          maxItems: 500
+          items:
+            $ref: "#/components/schemas/SyncOperation"
+    PushResult:
+      type: object
+      required: [opId, status]
+      properties:
+        opId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [applied, duplicate, conflict, rejected]
+        serverSeq:
+          type: integer
+        serverVersion:
+          type: integer
+        reason:
+          type: string
+        conflictId:
+          type: string
+          format: uuid
+    PushResponse:
+      type: object
+      required: [results, cursor]
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/PushResult"
+        cursor:
+          type: string
+    SyncChange:
+      type: object
+      required:
+        - serverSeq
+        - entity
+        - entityId
+        - op
+        - hlc
+        - serverVersion
+        - tombstone
+      properties:
+        serverSeq:
+          type: integer
+        entity:
+          type: string
+        entityId:
+          type: string
+        op:
+          type: string
+          enum: [upsert, delete]
+        payload:
+          type: [object, "null"]
+          additionalProperties: true
+        hlc:
+          type: string
+        serverVersion:
+          type: integer
+        tombstone:
+          type: boolean
+    PullResponse:
+      type: object
+      required: [changes, cursor, hasMore]
+      properties:
+        changes:
+          type: array
+          items:
+            $ref: "#/components/schemas/SyncChange"
+        cursor:
+          type: string
+        hasMore:
+          type: boolean
+    VersionEnableRequest:
+      type: object
+      required: [versionCode, policy]
+      properties:
+        versionCode:
+          type: integer
+        packageKey:
+          type: string
+        checksum:
+          type: string
+        policy:
+          type: object
+          additionalProperties: true
+    AuditEntry:
+      type: object
+      required: [id, action, targetType, targetId, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        actorEmail:
+          type: [string, "null"]
+        action:
+          type: string
+        targetType:
+          type: string
+        targetId:
+          type: string
+        metadata:
+          type: [object, "null"]
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time

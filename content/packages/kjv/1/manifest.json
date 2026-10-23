@@ -1,0 +1,636 @@
+{
+  "schemaVersion": 1,
+  "versionId": "kjv",
+  "versionCode": 1,
+  "name": "King James Version",
+  "abbreviation": "KJV",
+  "language": "en",
+  "languageName": "English",
+  "direction": "ltr",
+  "licence": {
+    "status": "public-domain",
+    "offlineDownload": true,
+    "maxDevices": null,
+    "maxVersesPerCopy": null,
+    "maxVersesPerShare": null,
+    "encryption": "none",
+    "regions": null,
+    "copyright": "The King James Version is in the public domain in the United States. Crown letters patent apply in the United Kingdom.",
+    "attribution": "King James Version (KJV)",
+    "licenceNote": "Public-domain text. Source: eBible.org / Crosswire Bible Society."
+  },
+  "versificationId": "kjv",
+  "versification": {
+    "file": "versification.json",
+    "bytes": 13235,
+    "sha256": "436b35774e90c766c7ee0acca47fc7e9b490051014e982ba95742053d8be577b"
+  },
+  "books": [
+    {
+      "code": "GEN",
+      "name": "Genesis",
+      "chapters": 50,
+      "verses": 1533,
+      "file": "books/GEN.ndjson",
+      "bytes": 295677,
+      "sha256": "c7ee4a35064884c30c727ab4f310f6ff8128734041de5b23bcd74f618079d81d"
+    },
+    {
+      "code": "EXO",
+      "name": "Exodus",
+      "chapters": 40,
+      "verses": 1213,
+      "file": "books/EXO.ndjson",
+      "bytes": 247266,
+      "sha256": "dcfad3098d5bfca8dd22b19b6414a30c58b712de1427f1f0923e460a0bd8a711"
+    },
+    {
+      "code": "LEV",
+      "name": "Leviticus",
+      "chapters": 27,
+      "verses": 859,
+      "file": "books/LEV.ndjson",
+      "bytes": 181937,
+      "sha256": "ec271074a14413dbf819d83ff07acea5434ca1c2b41c340655a7923a39709f09"
+    },
+    {
+      "code": "NUM",
+      "name": "Numbers",
+      "chapters": 36,
+      "verses": 1288,
+      "file": "books/NUM.ndjson",
+      "bytes": 258085,
+      "sha256": "ad6bebe3638998003068a831e9f415e434839cbe859f6ff2c7f553164b32b752"
+    },
+    {
+      "code": "DEU",
+      "name": "Deuteronomy",
+      "chapters": 34,
+      "verses": 959,
+      "file": "books/DEU.ndjson",
+      "bytes": 207694,
+      "sha256": "a2262210484c6b8a61a59441b6e36918a4515317089d787a06ccbfcadbf26da5"
+    },
+    {
+      "code": "JOS",
+      "name": "Joshua",
+      "chapters": 24,
+      "verses": 658,
+      "file": "books/JOS.ndjson",
+      "bytes": 142210,
+      "sha256": "a418fab7a7af5ecbd4b4db6dfaaef16f6645ea24860a08a63b66ae70ab389ab5"
+    },
+    {
+      "code": "JDG",
+      "name": "Judges",
+      "chapters": 21,
+      "verses": 618,
+      "file": "books/JDG.ndjson",
+      "bytes": 138021,
+      "sha256": "b79f5230480d96d3b88ee48f931ded0901e0712374100be5408380c79921f364"
+    },
+    {
+      "code": "RUT",
+      "name": "Ruth",
+      "chapters": 4,
+      "verses": 85,
+      "file": "books/RUT.ndjson",
+      "bytes": 18314,
+      "sha256": "5ab177e32a7d7be21d262fe67f1cc6e663709cee920ddeac6dd6f4a9800ab522"
+    },
+    {
+      "code": "1SA",
+      "name": "1 Samuel",
+      "chapters": 31,
+      "verses": 810,
+      "file": "books/1SA.ndjson",
+      "bytes": 181197,
+      "sha256": "03162f4904a327b70a70a3a2497d0cc150bfcf2e028e61c583c52206d03ff6bc"
+    },
+    {
+      "code": "2SA",
+      "name": "2 Samuel",
+      "chapters": 24,
+      "verses": 695,
+      "file": "books/2SA.ndjson",
+      "bytes": 150981,
+      "sha256": "d0a01d1e9e4ff6c67ec99b0238ffb3a6b4834e161356ca8ff56142bbf408afe5"
+    },
+    {
+      "code": "1KI",
+      "name": "1 Kings",
+      "chapters": 22,
+      "verses": 816,
+      "file": "books/1KI.ndjson",
+      "bytes": 179105,
+      "sha256": "8f5661eb4c7774b5a298aace70012427533fbfa1e4d3e8dba21a3196bc0ddb98"
+    },
+    {
+      "code": "2KI",
+      "name": "2 Kings",
+      "chapters": 25,
+      "verses": 719,
+      "file": "books/2KI.ndjson",
+      "bytes": 166700,
+      "sha256": "37109aa11a6670a30e3b113515acb58defd8e09346015776782e41c378a6b1fe"
+    },
+    {
+      "code": "1CH",
+      "name": "1 Chronicles",
+      "chapters": 29,
+      "verses": 942,
+      "file": "books/1CH.ndjson",
+      "bytes": 171039,
+      "sha256": "c66f93682c5a3b0a100c974595a272cfdeca9532a699a3bfb3a3c58d5f649a07"
+    },
+    {
+      "code": "2CH",
+      "name": "2 Chronicles",
+      "chapters": 36,
+      "verses": 822,
+      "file": "books/2CH.ndjson",
+      "bytes": 191579,
+      "sha256": "57787a7725f363f9b20d36f7a5e1dd2ec601867756a088ff43874620859ac7a3"
+    },
+    {
+      "code": "EZR",
+      "name": "Ezra",
+      "chapters": 10,
+      "verses": 280,
+      "file": "books/EZR.ndjson",
+      "bytes": 57979,
+      "sha256": "9275daf63e5368ab2ba4a924bc86e38c699be45b14283a3b3213c44b419c1840"
+    },
+    {
+      "code": "NEH",
+      "name": "Nehemiah",
+      "chapters": 13,
+      "verses": 406,
+      "file": "books/NEH.ndjson",
+      "bytes": 82835,
+      "sha256": "43e7cd1e9931957bcef6b82bd2b00bacd053b24d3afcb268b69048eb8eee98e6"
+    },
+    {
+      "code": "EST",
+      "name": "Esther",
+      "chapters": 10,
+      "verses": 167,
+      "file": "books/EST.ndjson",
+      "bytes": 40760,
+      "sha256": "b9f478774f7f71c1464361c17e8b8d36391e356cc4097378d156df183849aea7"
+    },
+    {
+      "code": "JOB",
+      "name": "Job",
+      "chapters": 42,
+      "verses": 1070,
+      "file": "books/JOB.ndjson",
+      "bytes": 162657,
+      "sha256": "ffee5322bb7c9aea472e278f3e08b37fa76de1e14f33e589f4c064a1024ecdfd"
+    },
+    {
+      "code": "PSA",
+      "name": "Psalms",
+      "chapters": 150,
+      "verses": 2461,
+      "file": "books/PSA.ndjson",
+      "bytes": 383027,
+      "sha256": "88f59cb4be52e610f4bef1068742f1adce7de2297dee987f4bf8bf66e232cec8"
+    },
+    {
+      "code": "PRO",
+      "name": "Proverbs",
+      "chapters": 31,
+      "verses": 915,
+      "file": "books/PRO.ndjson",
+      "bytes": 138459,
+      "sha256": "b8655e3a894f1b7cf8aafb0641a879f1791212446f965be95be0f2fc14342971"
+    },
+    {
+      "code": "ECC",
+      "name": "Ecclesiastes",
+      "chapters": 12,
+      "verses": 222,
+      "file": "books/ECC.ndjson",
+      "bytes": 42243,
+      "sha256": "95a2a637c012ce6421933b081cd3d817d239da44ef7587272d0bce7da05fa17d"
+    },
+    {
+      "code": "SNG",
+      "name": "Song of Solomon",
+      "chapters": 8,
+      "verses": 117,
+      "file": "books/SNG.ndjson",
+      "bytes": 20942,
+      "sha256": "488f0ae0a3848b0674586b1feae1b27ec0e8b83638279e0eccd64dfc73b4eba9"
+    },
+    {
+      "code": "ISA",
+      "name": "Isaiah",
+      "chapters": 66,
+      "verses": 1292,
+      "file": "books/ISA.ndjson",
+      "bytes": 276516,
+      "sha256": "759be257e5fa5571be010614915a21e0ba8c661c49e531fd1255397f974fde62"
+    },
+    {
+      "code": "JER",
+      "name": "Jeremiah",
+      "chapters": 52,
+      "verses": 1364,
+      "file": "books/JER.ndjson",
+      "bytes": 311125,
+      "sha256": "c116862ee86c0552faef7c767274106696830c20cb375afda1513a9b59d0bff1"
+    },
+    {
+      "code": "LAM",
+      "name": "Lamentations",
+      "chapters": 5,
+      "verses": 154,
+      "file": "books/LAM.ndjson",
+      "bytes": 27702,
+      "sha256": "8d217f70dd1be4dfa641eab456910607d5b086478bf5356612e6963e650c3238"
+    },
+    {
+      "code": "EZK",
+      "name": "Ezekiel",
+      "chapters": 48,
+      "verses": 1273,
+      "file": "books/EZK.ndjson",
+      "bytes": 286909,
+      "sha256": "1103743ce069be1a33984a00c279c3cb774fc15662d274a5788208f069ed608f"
+    },
+    {
+      "code": "DAN",
+      "name": "Daniel",
+      "chapters": 12,
+      "verses": 357,
+      "file": "books/DAN.ndjson",
+      "bytes": 84387,
+      "sha256": "a735d8714d997d7c58b95f89be026615bd5ebcd2973fef283f60e465c050fa87"
+    },
+    {
+      "code": "HOS",
+      "name": "Hosea",
+      "chapters": 14,
+      "verses": 197,
+      "file": "books/HOS.ndjson",
+      "bytes": 39427,
+      "sha256": "bd4db663981d7c329c6d2a36dbbf7cfc6fd9d9d310540af375b64e0a0f7ca5e3"
+    },
+    {
+      "code": "JOL",
+      "name": "Joel",
+      "chapters": 3,
+      "verses": 73,
+      "file": "books/JOL.ndjson",
+      "bytes": 15263,
+      "sha256": "c0beeb6b820e7d6bd4f35d9467b6cf5c52c194661271f6d77791870237259052"
+    },
+    {
+      "code": "AMO",
+      "name": "Amos",
+      "chapters": 9,
+      "verses": 146,
+      "file": "books/AMO.ndjson",
+      "bytes": 30915,
+      "sha256": "339c8973932420a628bbbaa0903c8bcfb503e9ea1f22955430c722b962d2de39"
+    },
+    {
+      "code": "OBA",
+      "name": "Obadiah",
+      "chapters": 1,
+      "verses": 21,
+      "file": "books/OBA.ndjson",
+      "bytes": 4885,
+      "sha256": "8d65be18c3d1db1adddccaf0f5f900e40252d32545739866626c583609193447"
+    },
+    {
+      "code": "JON",
+      "name": "Jonah",
+      "chapters": 4,
+      "verses": 48,
+      "file": "books/JON.ndjson",
+      "bytes": 9589,
+      "sha256": "4cb7a100094541abcf03d72a0b1a055aa5e3efa95aabfaad10e62137c991d778"
+    },
+    {
+      "code": "MIC",
+      "name": "Micah",
+      "chapters": 7,
+      "verses": 105,
+      "file": "books/MIC.ndjson",
+      "bytes": 22827,
+      "sha256": "cf103556526ac15000db16fb190dc0b091846aed365d46d5ad414932e27dad7e"
+    },
+    {
+      "code": "NAM",
+      "name": "Nahum",
+      "chapters": 3,
+      "verses": 47,
+      "file": "books/NAM.ndjson",
+      "bytes": 9821,
+      "sha256": "e3ef1db387a6abcfa3fbfea31dd085aceac975f6af355b9153854963430935f2"
+    },
+    {
+      "code": "HAB",
+      "name": "Habakkuk",
+      "chapters": 3,
+      "verses": 56,
+      "file": "books/HAB.ndjson",
+      "bytes": 11405,
+      "sha256": "2281841cc3283bfdcbf0cd7a18ab7aaafd07231dd4b2465613392b24d51ed142"
+    },
+    {
+      "code": "ZEP",
+      "name": "Zephaniah",
+      "chapters": 3,
+      "verses": 53,
+      "file": "books/ZEP.ndjson",
+      "bytes": 11797,
+      "sha256": "437f678cdaf4576d1b94db5fb14fda2261ec225eb1224afecb056638c3cc840e"
+    },
+    {
+      "code": "HAG",
+      "name": "Haggai",
+      "chapters": 2,
+      "verses": 38,
+      "file": "books/HAG.ndjson",
+      "bytes": 8101,
+      "sha256": "02240352507116713d5e0246481431a18f1c96b637cb9b2e5d9c016e697016e5"
+    },
+    {
+      "code": "ZEC",
+      "name": "Zechariah",
+      "chapters": 14,
+      "verses": 211,
+      "file": "books/ZEC.ndjson",
+      "bytes": 46150,
+      "sha256": "a51d9d8ec8ae77b6f545f81009f2f0e1a409b710331cf463bea3bec1a5781eba"
+    },
+    {
+      "code": "MAL",
+      "name": "Malachi",
+      "chapters": 4,
+      "verses": 55,
+      "file": "books/MAL.ndjson",
+      "bytes": 12600,
+      "sha256": "03263836181936b5de2c329980b6af7070559f4a78cf8778f0aafa21a603d3fa"
+    },
+    {
+      "code": "MAT",
+      "name": "Matthew",
+      "chapters": 28,
+      "verses": 1071,
+      "file": "books/MAT.ndjson",
+      "bytes": 193087,
+      "sha256": "d51376fefe7e429a513d3c74ed687b310c7eab223d2a43fc2a83a62229a90689"
+    },
+    {
+      "code": "MRK",
+      "name": "Mark",
+      "chapters": 16,
+      "verses": 678,
+      "file": "books/MRK.ndjson",
+      "bytes": 122199,
+      "sha256": "13b61e82983196f883e897419b0ad3e52d0cd8ea9218362d7466cb4aabda0401"
+    },
+    {
+      "code": "LUK",
+      "name": "Luke",
+      "chapters": 24,
+      "verses": 1151,
+      "file": "books/LUK.ndjson",
+      "bytes": 208222,
+      "sha256": "0f5f0a473fa4494920ffcec3dc2078012fceba64da579fbabdc2fd6022469462"
+    },
+    {
+      "code": "JHN",
+      "name": "John",
+      "chapters": 21,
+      "verses": 879,
+      "file": "books/JHN.ndjson",
+      "bytes": 153999,
+      "sha256": "d98d3a465ecf7d85680c031ea2a5903c09663e2c5f0702b5ae895f070173398a"
+    },
+    {
+      "code": "ACT",
+      "name": "Acts",
+      "chapters": 28,
+      "verses": 1007,
+      "file": "books/ACT.ndjson",
+      "bytes": 194213,
+      "sha256": "6f14f68e5822c4ee2e8d969822c16ea48977347046f8dd924b43644069c29cd7"
+    },
+    {
+      "code": "ROM",
+      "name": "Romans",
+      "chapters": 16,
+      "verses": 433,
+      "file": "books/ROM.ndjson",
+      "bytes": 77593,
+      "sha256": "8fc159427d6e231efa7de8428cda6ccb278014bb2838866cb1a2ef773a8506ee"
+    },
+    {
+      "code": "1CO",
+      "name": "1 Corinthians",
+      "chapters": 16,
+      "verses": 437,
+      "file": "books/1CO.ndjson",
+      "bytes": 76690,
+      "sha256": "18a4d36d43e31ca65c66f4337deba851ae6d5b522989f7a29a6e82e68dbc8243"
+    },
+    {
+      "code": "2CO",
+      "name": "2 Corinthians",
+      "chapters": 13,
+      "verses": 257,
+      "file": "books/2CO.ndjson",
+      "bytes": 48154,
+      "sha256": "0c7d8f54b98f38b5d4382714726d9995e9021f883dc6172c0f4bb6845ba71f09"
+    },
+    {
+      "code": "GAL",
+      "name": "Galatians",
+      "chapters": 6,
+      "verses": 149,
+      "file": "books/GAL.ndjson",
+      "bytes": 25532,
+      "sha256": "b083b917269b16ab3724477866ce7bc96feedaaca337a604eb7179c6abe56e69"
+    },
+    {
+      "code": "EPH",
+      "name": "Ephesians",
+      "chapters": 6,
+      "verses": 155,
+      "file": "books/EPH.ndjson",
+      "bytes": 25943,
+      "sha256": "4b6e709af030cc30bf846a3b1ca7ad697bf484ff941f34c2b5907ca9cd15c7f8"
+    },
+    {
+      "code": "PHP",
+      "name": "Philippians",
+      "chapters": 4,
+      "verses": 104,
+      "file": "books/PHP.ndjson",
+      "bytes": 18042,
+      "sha256": "923775a545f05b2589837ed5917669fe13933d7a94efa50ac42bc3f7a0bd2013"
+    },
+    {
+      "code": "COL",
+      "name": "Colossians",
+      "chapters": 4,
+      "verses": 95,
+      "file": "books/COL.ndjson",
+      "bytes": 16641,
+      "sha256": "735a9aba193e92ef2893656fb46a1d28a72be9fa1d8308bbdb4d21ba0cedd03b"
+    },
+    {
+      "code": "1TH",
+      "name": "1 Thessalonians",
+      "chapters": 5,
+      "verses": 89,
+      "file": "books/1TH.ndjson",
+      "bytes": 15182,
+      "sha256": "36f5d1356bf521aabb521315bef835aabc75367029417bb5a725c7cdaaca34a8"
+    },
+    {
+      "code": "2TH",
+      "name": "2 Thessalonians",
+      "chapters": 3,
+      "verses": 47,
+      "file": "books/2TH.ndjson",
+      "bytes": 8351,
+      "sha256": "3725a54fc69aedcf39c252543d5331823486cc2c7b0d8cda93d1f1cdca82f5d9"
+    },
+    {
+      "code": "1TI",
+      "name": "1 Timothy",
+      "chapters": 6,
+      "verses": 113,
+      "file": "books/1TI.ndjson",
+      "bytes": 19722,
+      "sha256": "0b364898b373e84633dc96b11cf495458aa8a615fe12c20141b1fa53ff3c39c6"
+    },
+    {
+      "code": "2TI",
+      "name": "2 Timothy",
+      "chapters": 4,
+      "verses": 83,
+      "file": "books/2TI.ndjson",
+      "bytes": 14353,
+      "sha256": "561691e0654bf88df7a01f1ac421f44cea8843c426a924976fbd60119cee35a5"
+    },
+    {
+      "code": "TIT",
+      "name": "Titus",
+      "chapters": 3,
+      "verses": 46,
+      "file": "books/TIT.ndjson",
+      "bytes": 7978,
+      "sha256": "95e1efb2f559fe7faf3c4650f66ad883685b6f4aadbd24752dbcfccc9c6a2a87"
+    },
+    {
+      "code": "PHM",
+      "name": "Philemon",
+      "chapters": 1,
+      "verses": 25,
+      "file": "books/PHM.ndjson",
+      "bytes": 3879,
+      "sha256": "500bd45a4704bf9d84db378197f6ab20327932a58f94c54f92fee532b5a316a4"
+    },
+    {
+      "code": "HEB",
+      "name": "Hebrews",
+      "chapters": 13,
+      "verses": 303,
+      "file": "books/HEB.ndjson",
+      "bytes": 56341,
+      "sha256": "2ae35d7c0691ea0e3c4fd1ee77741f30d016128eced4aa839529fa1d3a8fa594"
+    },
+    {
+      "code": "JAS",
+      "name": "James",
+      "chapters": 5,
+      "verses": 108,
+      "file": "books/JAS.ndjson",
+      "bytes": 18855,
+      "sha256": "bed2f11fb8477b4e2205ce26588c9c9198f28b5e4c6dc914ffe01ff57aca9d8d"
+    },
+    {
+      "code": "1PE",
+      "name": "1 Peter",
+      "chapters": 5,
+      "verses": 105,
+      "file": "books/1PE.ndjson",
+      "bytes": 20000,
+      "sha256": "91d8e6525809ca9cd80a4f9b03b1aa983a5301c9a3b7a2f56192d73d8c1a49d0"
+    },
+    {
+      "code": "2PE",
+      "name": "2 Peter",
+      "chapters": 3,
+      "verses": 61,
+      "file": "books/2PE.ndjson",
+      "bytes": 12491,
+      "sha256": "410ec3b49c766ab30ad47bac484e688017c1de1bff9e8e98108d2ae44eb04fb3"
+    },
+    {
+      "code": "1JN",
+      "name": "1 John",
+      "chapters": 5,
+      "verses": 105,
+      "file": "books/1JN.ndjson",
+      "bytes": 19290,
+      "sha256": "caec47358caa43fac07a40d622a8084247fa4524f6d4a86be4194ac821808844"
+    },
+    {
+      "code": "2JN",
+      "name": "2 John",
+      "chapters": 1,
+      "verses": 13,
+      "file": "books/2JN.ndjson",
+      "bytes": 2356,
+      "sha256": "d71576b382e2004ece6b11775ef74d4e54efc879688fd60cd51ada4b74b14d5b"
+    },
+    {
+      "code": "3JN",
+      "name": "3 John",
+      "chapters": 1,
+      "verses": 14,
+      "file": "books/3JN.ndjson",
+      "bytes": 2459,
+      "sha256": "18beb092d18e4e90dc83bd9cfb95af0e9f78ff50955f2a94ded5e96ac5020e51"
+    },
+    {
+      "code": "JUD",
+      "name": "Jude",
+      "chapters": 1,
+      "verses": 25,
+      "file": "books/JUD.ndjson",
+      "bytes": 5082,
+      "sha256": "e90eb60ae6111fff414a64140175dd126bcdbf4e4c8b81754869cd99623f4d23"
+    },
+    {
+      "code": "REV",
+      "name": "Revelation",
+      "chapters": 22,
+      "verses": 404,
+      "file": "books/REV.ndjson",
+      "bytes": 87626,
+      "sha256": "1a70ad01b488f11dd930d039c3ed7697234a8c96a5c31f36c6eceda01ff7fa53"
+    }
+  ],
+  "totals": {
+    "books": 66,
+    "chapters": 1189,
+    "verses": 31102
+  },
+  "builtAt": "2026-10-21T00:00:00.000Z",
+  "builderVersion": "0.1.0",
+  "source": {
+    "name": "eBible.org KJV USFM",
+    "url": "https://ebible.org/Scriptures/eng-kjv_usfm.zip",
+    "licenceNote": "Public domain; the source archive includes Apocrypha and Strong's markup, both excluded from the 66-book package."
+  }
+}

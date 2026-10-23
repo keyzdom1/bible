@@ -1,0 +1,122 @@
+export {
+  BOOKS,
+  BOOK_CODES,
+  CHAPTER_COUNTS,
+  getBook,
+  getBookByOsisId,
+  isBookCode,
+  matchBookAtStart,
+  normalizeBookToken,
+  requireBook,
+  type Book,
+  type BookCode,
+  type BookDefinition,
+} from "./books";
+
+export {
+  chapterId,
+  compareVerseIds,
+  isVerseId,
+  parseChapterId,
+  parseVerseId,
+  parseVerseRangeId,
+  sortVerseIds,
+  tryParseVerseId,
+  verseId,
+  verseRangeId,
+  type ParsedVerseId,
+  type VerseCoordinate,
+} from "./verse-id";
+
+export {
+  formatReference,
+  formatReferenceList,
+  parseReference,
+  parseReferenceList,
+  ReferenceParseError,
+  tryParseReference,
+  type Reference,
+  type ReferenceParseErrorCode,
+} from "./reference";
+
+export {
+  bookCodeSchema,
+  licencePolicySchema,
+  licenceStatusSchema,
+  packageBookSchema,
+  packageManifestSchema,
+  packageSearchSchema,
+  packageVerseSchema,
+  packageVersificationSchema,
+  versificationMapSchema,
+  type ContentVersionSummary,
+  type LicencePolicy,
+  type LicenceStatus,
+  type PackageBook,
+  type PackageBookFile,
+  type PackageManifest,
+  type PackageVerse,
+  type PackageVersification,
+  type VersificationMap,
+} from "./content";
+
+export {
+  checkCopyAllowed,
+  checkDownloadAllowed,
+  copyrightNotice,
+  formatCitation,
+  isVersionVisible,
+  type CitationVerse,
+  type CopyDecision,
+  type CopyMode,
+  type DownloadContext,
+  type DownloadDenialReason,
+  type PolicyDecision,
+  type VersionAvailability,
+} from "./licensing";
+
+export {
+  compareHlc,
+  createClock,
+  formatHlc,
+  hlcMillis,
+  maxClock,
+  parseHlc,
+  pullResponseSchema,
+  pushRequestSchema,
+  receive,
+  syncEntitySchema,
+  syncOperationSchema,
+  tick,
+  type ChangeEnvelope,
+  type HybridLogicalClock,
+  type NoteConflict,
+  type PullResponse,
+  type PushRequest,
+  type PushResponse,
+  type PushResult,
+  type SyncCursor,
+  type SyncEntity,
+  type SyncOperation,
+  type SyncStatus,
+} from "./sync";
+
+export * from "./api";
+export {
+  ApiClientError,
+  HolyWordApiClient,
+  type ApiClientOptions,
+  type ApiErrorBody,
+  type DownloadTicketRequest,
+  type FetchLike,
+  type SearchRequest,
+} from "./api-client";
+export {
+  CognitoAuthClient,
+  CognitoError,
+  type CognitoChallenge,
+  type CognitoConfig,
+  type CognitoFetchLike,
+  type CognitoSignUpResult,
+  type CognitoTokens,
+} from "./cognito";

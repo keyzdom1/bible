@@ -1,0 +1,18 @@
+node_modules
+dist
+coverage
+.turbo
+pnpm-lock.yaml
+packages/core/src/api/schema.d.ts
+packages/db/drizzle/meta
+packages/content/.cache
+content/packages
+
+# PowerShell icon generator is not formatted by Prettier
+*.ps1
+
+# Next.js and Expo generated output
+.next
+apps/web/.next
+.expo
+apps/mobile/.expo

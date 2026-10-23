@@ -1,0 +1,46 @@
+{
+  "name": "@holyword/content",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "HolyWord content ingestion, package building, verification and publishing tools",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "eslint src test",
+    "fetch-kjv": "tsx src/cli.ts fetch-kjv --dest .cache/kjv-usfm",
+    "build-kjv": "tsx src/cli.ts build-kjv --source .cache/kjv-usfm --metadata ../../content/sources/kjv/metadata.json --out ../../content/packages",
+    "verify-kjv": "tsx src/cli.ts verify --package ../../content/packages/kjv/1",
+    "ingest": "tsx src/cli.ts ingest",
+    "publish": "tsx src/cli.ts publish",
+    "verify": "tsx src/cli.ts verify"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.918.0",
+    "@holyword/core": "workspace:*",
+    "fast-xml-parser": "^5.3.1",
+    "fflate": "^0.8.2",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "tsup": "^9.0.0",
+    "tsx": "^4.23.15",
+    "typescript": "5.9.3",
+    "vitest": "^3.2.7"
+  }
+}

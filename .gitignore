@@ -1,0 +1,29 @@
+node_modules/
+dist/
+build/
+.turbo/
+.next/
+.expo/
+coverage/
+*.tsbuildinfo
+
+.env
+.env.*
+!.env.example
+
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Generated licensed content must never be committed
+/content-packages/*.zip
+/content-packages/private/
+
+# Downloaded source caches and generated archives are reproducible artifacts.
+packages/content/.cache/
+content/packages/**/package.zip
