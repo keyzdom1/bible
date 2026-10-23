@@ -136,6 +136,8 @@ self.addEventListener("periodicsync", (event) => {
 self.addEventListener("message", (event) => {
   if (event.data?.type === "SKIP_WAITING") void self.skipWaiting();
   if (event.data?.type === "REQUEST_SYNC" && "sync" in self.registration) {
-    event.waitUntil(self.registration.sync.register("holyword-sync").catch(() => undefined));
+    const tag =
+      typeof event.data.tag === "string" && event.data.tag ? event.data.tag : "holyword-sync";
+    event.waitUntil(self.registration.sync.register(tag).catch(() => undefined));
   }
 });

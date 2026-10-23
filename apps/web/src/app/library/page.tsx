@@ -212,6 +212,11 @@ export default function LibraryPage() {
                 ) : null}
                 {installed ? (
                   <span className="pill">
+                    {formatBytes(installed.storage_bytes)} on this device
+                  </span>
+                ) : null}
+                {installed ? (
+                  <span className="pill">
                     Installed {new Date(installed.installed_at).toLocaleDateString()}
                   </span>
                 ) : null}

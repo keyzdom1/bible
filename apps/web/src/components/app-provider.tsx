@@ -12,6 +12,7 @@ import {
 } from "react";
 import type { ApiSession, CognitoTokens } from "@holyword/core";
 import type { LocalPreferences, PreferencePayload, SyncStateView } from "@holyword/offline";
+import { requestBackgroundSync, shouldRequestBackgroundSync } from "@/lib/background-sync";
 import { WebRuntime } from "@/lib/web-runtime";
 
 const EMPTY_SYNC: SyncStateView = {
@@ -115,6 +116,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!runtime) return;
     return runtime.onSync(setSyncState);
   }, [runtime]);
+
+  // While operations wait to be pushed, register the service-worker background sync
+  // tag so a reconnect drains them even when this tab is throttled or backgrounded.
+  useEffect(() => {
+    if (!shouldRequestBackgroundSync(syncState.pending)) return;
+    void requestBackgroundSync();
+  }, [syncState.pending]);
 
   useEffect(() => {
     if (!runtime || !session) return;

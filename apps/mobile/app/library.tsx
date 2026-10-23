@@ -197,6 +197,10 @@ export default function LibraryScreen() {
                     {version.abbreviation} · {version.language} ·{" "}
                     {formatBytes(version.storageBytes)}
                   </Text>
+                  <Text style={{ color: colors.subtle, fontSize: 11, lineHeight: 16 }}>
+                    {version.attribution}
+                    {`\n${version.copyright}`}
+                  </Text>
                 </View>
                 <View
                   style={{
@@ -331,9 +335,15 @@ export default function LibraryScreen() {
                     available. HolyWord will not substitute or invent text.
                   </Text>
                 ) : (
-                  <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18 }}>
-                    Resumable download, checksum verification and on-device full-text search.
-                  </Text>
+                  <>
+                    <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18 }}>
+                      Resumable download, checksum verification and on-device full-text search.
+                    </Text>
+                    <Text style={{ color: colors.subtle, fontSize: 11, lineHeight: 16 }}>
+                      {version.attribution}
+                      {`\n${version.copyright}`}
+                    </Text>
+                  </>
                 )}
                 <Row style={{ justifyContent: "flex-end" }}>
                   {progress && (progress.status === "paused" || progress.status === "error") ? (

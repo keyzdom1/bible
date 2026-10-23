@@ -2,6 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
+    id: "/",
+    lang: "en",
     name: "HolyWord Bible",
     short_name: "HolyWord",
     description:
@@ -13,6 +15,20 @@ export default function manifest(): MetadataRoute.Manifest {
     background_color: "#F4F7FB",
     theme_color: "#123B8F",
     categories: ["books", "lifestyle", "education"],
+    shortcuts: [
+      {
+        name: "Read the Bible",
+        short_name: "Read",
+        description: "Open the last read chapter.",
+        url: "/read",
+      },
+      {
+        name: "Search Scripture",
+        short_name: "Search",
+        description: "Search words, phrases and references.",
+        url: "/search",
+      },
+    ],
     icons: [
       {
         src: "/icons/icon-192.png",

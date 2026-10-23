@@ -84,6 +84,8 @@ export interface VersionSummary {
   readonly abbreviation: string;
   readonly language: string;
   readonly licenceStatus: string;
+  readonly attribution: string;
+  readonly copyright: string;
   readonly enabled: boolean;
   readonly installed: boolean;
   readonly storageBytes: number;
@@ -426,6 +428,8 @@ export class MobileRuntime {
         abbreviation: version.abbreviation,
         language: version.language,
         licenceStatus: version.licenceStatus,
+        attribution: version.attribution,
+        copyright: version.copyright,
         enabled: version.enabled,
         installed: installedIds.has(version.versionId),
         storageBytes: local?.storage_bytes ?? 0,
@@ -439,6 +443,8 @@ export class MobileRuntime {
           abbreviation: local.abbreviation,
           language: local.language,
           licenceStatus: local.licence.status,
+          attribution: local.attribution,
+          copyright: local.copyright,
           enabled: true,
           installed: true,
           storageBytes: local.storage_bytes,
