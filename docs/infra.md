@@ -111,10 +111,13 @@ terraform -chdir=infra/environments/dev init -backend-config="bucket=<your-state
 
 ## Deploy flows
 
-- **App code** (push to `master`): `deploy.yml` builds, bundles
+- **App code** (manual: Actions -> Deploy -> Run workflow -> target `dev`):
+  `deploy.yml` builds, bundles
   (`scripts/build-bundle.mjs api|web`), uploads to the artifact bucket, creates
   an Elastic Beanstalk application version and rolls both environments to it,
-  then smoke-tests `https://<app_url>/health` through CloudFront.
+  then smoke-tests `https://<app_url>/health` through CloudFront. After the
+  first apply, the push-to-`master` trigger can be re-enabled using the snippet
+  in the workflow header.
 - **Prod app deploy**: Actions -> Deploy -> Run workflow -> target `prod`
   (gated by the `prod` environment's reviewers).
 - **Infrastructure**: Actions -> Infrastructure -> run with `apply` unchecked,

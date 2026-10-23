@@ -1,17 +1,15 @@
 name: Deploy
 
-# Pushes to master deploy the dev environment. Prod deploys are manual
-# (workflow_dispatch) and gated by the GitHub environment's required reviewers.
+# Deploys are manual (workflow_dispatch) until the AWS infrastructure exists:
+# every value this workflow needs comes from a terraform apply (docs/infra.md),
+# so automatic runs on push would only fail at the guard step. After the first
+# apply, re-enable the push trigger by adding to `on:`:
+#   push:
+#     branches: [master]
+#     paths-ignore: ["docs/**", "**/*.md", "infra/**", ".github/workflows/ci.yml", ".github/workflows/terraform.yml"]
+# Prod deploys stay gated by the GitHub environment's required reviewers.
 # Infrastructure changes go through terraform.yml, not here.
 on:
-  push:
-    branches: [master]
-    paths-ignore:
-      - "docs/**"
-      - "**/*.md"
-      - "infra/**"
-      - ".github/workflows/ci.yml"
-      - ".github/workflows/terraform.yml"
   workflow_dispatch:
     inputs:
       target:
