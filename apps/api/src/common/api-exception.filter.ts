@@ -36,6 +36,19 @@ export class ApiExceptionFilter implements ExceptionFilter {
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
       const payload = exception.getResponse();
+      // Structured single-line JSON so CloudWatch metric filters can alarm on
+      // authentication failures (spec §9) once logs are streamed from Elastic Beanstalk.
+      if ((status === 401 || status === 403) && process.env.NODE_ENV !== "test") {
+        console.warn(
+          JSON.stringify({
+            type: "auth-failure",
+            status,
+            method: request.method,
+            path: request.originalUrl,
+            at: new Date().toISOString(),
+          }),
+        );
+      }
       if (typeof payload === "object" && payload !== null && "code" in payload) {
         response.status(status).json(payload);
         return;

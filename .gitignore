@@ -27,3 +27,16 @@ npm-debug.log*
 # Downloaded source caches and generated archives are reproducible artifacts.
 packages/content/.cache/
 content/packages/**/package.zip
+
+# Terraform: per-account variables hold secrets; local state/plugins stay local.
+# (.terraform.lock.hcl IS committed: it pins provider versions.)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+crash.*.log
+
+# Elastic Beanstalk deploy bundles
+build/*.zip

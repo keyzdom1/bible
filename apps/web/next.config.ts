@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   transpilePackages: ["@holyword/core", "@holyword/offline"],
   poweredByHeader: false,
+  // Self-contained server bundle for the Elastic Beanstalk deploy
+  // (scripts/build-bundle.mjs). No effect on `next dev` or the tests.
+  output: "standalone",
   async headers() {
     return [
       {

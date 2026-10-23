@@ -1,0 +1,32 @@
+# Copy to terraform.tfvars (gitignored) and fill in. Everything here is
+# non-secret except where marked; secrets passed here end up in Terraform state,
+# which lives in the encrypted S3 state bucket.
+
+# Required: public half of the CloudFront signing key pair. Use the production
+# key, not the dev one.
+#   openssl genrsa -out cf-signing-prod.pem 2048
+#   openssl rsa -in cf-signing-prod.pem -pubout -out cf-signing-prod.pub.pem
+# Keep cf-signing-prod.pem out of git; it backs CLOUDFRONT_PRIVATE_KEY_PATH.
+cloudfront_signing_public_key_pem = <<-EOT
+  -----BEGIN PUBLIC KEY-----
+  MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...
+  -----END PUBLIC KEY-----
+EOT
+
+# Optional Cognito extras (social login). Leave unset to skip.
+# google_client_id     = "000000000000-xxxxxxxxx.apps.googleusercontent.com"
+# google_client_secret = "GOCSPX-xxxxxxxxxxxxxxxx"
+
+# Recommended in prod: alarm notifications.
+# alarm_email = "you@example.com"
+
+# Optional: mobile deep link callbacks.
+# extra_callback_urls = ["holyword://auth"]
+
+# Defaults you rarely need to touch (see variables.tf for prod sizes):
+# region              = "us-east-1"
+# api_instance_type   = "t3.small"
+# db_instance_class   = "db.t4g.small"
+# github_repository   = "keyzdom1/bible"
+# github_branch       = "master"
+# create_opensearch_service_linked_role = false # if the account already has it

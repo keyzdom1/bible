@@ -1,0 +1,66 @@
+name: Infrastructure
+
+# Manual infrastructure changes only: pick an environment, review the plan, and
+# tick "apply" to execute it. GitHub environment reviewers gate prod applies.
+# Day-to-day application code never needs this workflow (see deploy.yml).
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Environment to plan/apply
+        type: choice
+        options:
+          - dev
+          - prod
+        default: dev
+      apply:
+        description: Apply the plan (leave unchecked for a plan-only run)
+        type: boolean
+        default: false
+
+concurrency:
+  group: terraform-${{ inputs.target }}
+  cancel-in-progress: false
+
+jobs:
+  terraform:
+    name: Terraform ${{ inputs.target }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.target }}
+    permissions:
+      id-token: write # OIDC into AWS, no long-lived keys
+      contents: read
+    defaults:
+      run:
+        shell: bash
+        working-directory: infra/environments/${{ inputs.target }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+          terraform_wrapper: false
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_TERRAFORM_ROLE_ARN }}
+          aws-region: us-east-1
+          role-session-name: github-terraform
+
+      - name: Terraform init
+        run: |
+          set -euo pipefail
+          if [ -n "${{ vars.STATE_BUCKET }}" ]; then
+            terraform init -input=false -backend-config="bucket=${{ vars.STATE_BUCKET }}"
+          else
+            terraform init -input=false
+          fi
+
+      - name: Terraform plan
+        run: terraform plan -input=false -out=tfplan
+
+      - name: Terraform apply
+        if: ${{ inputs.apply }}
+        run: terraform apply -input=false tfplan

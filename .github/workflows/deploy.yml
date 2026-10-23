@@ -1,0 +1,143 @@
+name: Deploy
+
+# Pushes to master deploy the dev environment. Prod deploys are manual
+# (workflow_dispatch) and gated by the GitHub environment's required reviewers.
+# Infrastructure changes go through terraform.yml, not here.
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+      - "infra/**"
+      - ".github/workflows/ci.yml"
+      - ".github/workflows/terraform.yml"
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Environment to deploy to
+        type: choice
+        options:
+          - dev
+          - prod
+        default: dev
+
+concurrency:
+  group: deploy-${{ github.event.inputs.target || 'dev' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy ${{ github.event.inputs.target || 'dev' }}
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.target || 'dev' }}
+    permissions:
+      id-token: write # OIDC into AWS, no long-lived keys
+      contents: read
+    env:
+      AWS_REGION: us-east-1
+      AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+      ARTIFACT_BUCKET: ${{ vars.ARTIFACT_BUCKET }}
+      API_APPLICATION: ${{ vars.API_APPLICATION_NAME }}
+      API_ENVIRONMENT: ${{ vars.API_ENVIRONMENT_NAME }}
+      WEB_APPLICATION: ${{ vars.WEB_APPLICATION_NAME }}
+      WEB_ENVIRONMENT: ${{ vars.WEB_ENVIRONMENT_NAME }}
+      APP_URL: ${{ vars.APP_URL }}
+    steps:
+      - name: Fail fast when the environment is not configured yet
+        run: |
+          missing=0
+          for name in AWS_DEPLOY_ROLE_ARN ARTIFACT_BUCKET API_APPLICATION API_ENVIRONMENT WEB_APPLICATION WEB_ENVIRONMENT APP_URL; do
+            if [ -z "${!name}" ]; then
+              echo "::error::${name} is not set on this GitHub environment. Apply infrastructure first (docs/infra.md), then copy the terraform outputs into the environment vars."
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.7
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # NEXT_PUBLIC_* is inlined into the client bundle at build time, so the
+      # CloudFront origin has to be known here (from the app_url terraform output).
+      - name: Build
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_API_BASE_URL: ${{ env.APP_URL }}
+
+      - name: Compute version label
+        id: version
+        run: echo "label=${GITHUB_RUN_ID}-$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Bundle API
+        run: node scripts/build-bundle.mjs api
+
+      - name: Bundle web PWA
+        run: node scripts/build-bundle.mjs web
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+          role-session-name: github-deploy
+
+      - name: Publish and deploy the API
+        env:
+          VERSION: ${{ steps.version.outputs.label }}
+        run: |
+          set -euo pipefail
+          aws s3 cp "build/holyword-api-${VERSION}.zip" "s3://${ARTIFACT_BUCKET}/api/${VERSION}.zip"
+          aws elasticbeanstalk create-application-version \
+            --application-name "${API_APPLICATION}" \
+            --version-label "${VERSION}" \
+            --source-bundle "S3Bucket=${ARTIFACT_BUCKET},S3Key=api/${VERSION}.zip" \
+            --description "Commit ${GITHUB_SHA} by ${GITHUB_ACTOR}"
+          aws elasticbeanstalk update-environment \
+            --application-name "${API_APPLICATION}" \
+            --environment-name "${API_ENVIRONMENT}" \
+            --version-label "${VERSION}"
+          aws elasticbeanstalk wait environment-updated --environment-name "${API_ENVIRONMENT}"
+
+      - name: Publish and deploy the web PWA
+        env:
+          VERSION: ${{ steps.version.outputs.label }}
+        run: |
+          set -euo pipefail
+          aws s3 cp "build/holyword-web-${VERSION}.zip" "s3://${ARTIFACT_BUCKET}/web/${VERSION}.zip"
+          aws elasticbeanstalk create-application-version \
+            --application-name "${WEB_APPLICATION}" \
+            --version-label "${VERSION}" \
+            --source-bundle "S3Bucket=${ARTIFACT_BUCKET},S3Key=web/${VERSION}.zip" \
+            --description "Commit ${GITHUB_SHA} by ${GITHUB_ACTOR}"
+          aws elasticbeanstalk update-environment \
+            --application-name "${WEB_APPLICATION}" \
+            --environment-name "${WEB_ENVIRONMENT}" \
+            --version-label "${VERSION}"
+          aws elasticbeanstalk wait environment-updated --environment-name "${WEB_ENVIRONMENT}"
+
+      # CloudFront caches nothing (CachingDisabled on both behaviors), so the new
+      # origin is picked up immediately; this only checks the public path works.
+      - name: Smoke test through CloudFront
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 30); do
+            if curl -fsS --retry 3 --retry-delay 5 "${APP_URL}/health" | grep -q '"status":"ok"'; then
+              echo "API healthy through CloudFront"
+              exit 0
+            fi
+            echo "attempt ${attempt}: not healthy yet"
+            sleep 10
+          done
+          echo "::error::${APP_URL}/health never returned ok"
+          exit 1
