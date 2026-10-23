@@ -235,6 +235,8 @@ WASM engine through a dynamic import. `pnpm check` invokes the same script.
 .
 ├─ apps/
 │  ├─ api/                    # NestJS REST API + 59 unit/e2e tests
+│  │  ├─ api/index.ts         # Vercel function entry (shares src/app-factory.ts)
+│  │  └─ vercel.json          # function limits + bundled content packages
 │  ├─ web/                    # Next.js 16 PWA + 27 tests
 │  └─ mobile/                 # Expo app + 11 tests
 ├─ packages/
@@ -252,6 +254,7 @@ WASM engine through a dynamic import. `pnpm check` invokes the same script.
 ├─ scripts/
 │  ├─ build-bundle.mjs        # Elastic Beanstalk deploy bundles (api | web)
 │  ├─ lighthouse.mjs          # best-effort Lighthouse scores
+│  ├─ stage-vercel-content.mjs # copy content/packages for the Vercel bundle
 │  ├─ validate-infra.ps1      # terraform fmt + init + validate
 │  └─ setup-db.ps1            # local PostgreSQL role/database
 ├─ content/
@@ -262,6 +265,7 @@ WASM engine through a dynamic import. `pnpm check` invokes the same script.
 │  ├─ openapi.yaml
 │  ├─ adr/
 │  ├─ infra.md                # environments, apply order, CI/CD setup
+│  ├─ vercel.md               # Vercel + Neon + Cognito launch guide
 │  ├─ runbook-restore.md      # RDS/PITR and content-bucket restore drills
 │  ├─ qa-checklist.md         # automated coverage + manual device matrix
 │  ├─ HolyWord-Build-Prompt.docx
@@ -299,9 +303,35 @@ placeholders until the first apply.
 
 CI/CD: `ci.yml` runs format/lint/typecheck/tests plus `terraform validate` on every
 push; `deploy.yml` builds both deploy bundles and deploys them to the Elastic Beanstalk
-environments (it fails fast with a clear message until the repository environment
+environments (triggered manually with `workflow_dispatch` until the first apply, and it
+fails fast with a clear message until the repository environment
 variables exist); `terraform.yml` runs a plan on demand and applies from `master` with a
 manually reviewed plan.
+
+## Deploy to Vercel
+
+The quickest live launch, in parallel with (not instead of) the AWS path: web + API on
+Vercel, PostgreSQL on Neon, sign-in on Cognito, content packages bundled straight into
+the function. The complete step-by-step guide with every environment variable is
+[`docs/vercel.md`](docs/vercel.md).
+
+1. **Neon**: create a project, then apply the schema with `pnpm db:migrate` (use the
+   direct endpoint) and seed with `pnpm db:seed`.
+2. **Cognito**: create a user pool with a public app client that allows
+   `ALLOW_USER_PASSWORD_AUTH` (no client secret, no hosted UI needed).
+3. **Vercel**: import the repository twice — root directory `apps/web` (framework
+   Next.js) and `apps/api` (framework Other). The API's `vercel-build` script builds the
+   workspace packages and stages `content/packages` into the function bundle through
+   `scripts/stage-vercel-content.mjs`; `apps/api/vercel.json` includes those files and
+   caps a request at 30 s.
+4. **Environment**: set the two tables from `docs/vercel.md` — API (`DATABASE_URL`,
+   `SESSION_SECRET`, `DOWNLOAD_TOKEN_SECRET`, Cognito ids, `WEB_ORIGIN`,
+   `CONTENT_BASE_URL`, `CONTENT_DELIVERY_MODE=local`, `CONTENT_PACKAGE_DIR=content/packages`,
+   `VERSION_FLAGS=kjv`) and web (`NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_APP_URL`,
+   `NEXT_PUBLIC_COGNITO_REGION`, `NEXT_PUBLIC_COGNITO_CLIENT_ID`) — then deploy `master`.
+   Leave `AUTH_DEV_MODE` / `NEXT_PUBLIC_AUTH_DEV_MODE` unset.
+5. **Verify**: `GET /health`, sign up and confirm an email, open a KJV chapter, create a
+   note, download the package from the library.
 
 ## QA
 

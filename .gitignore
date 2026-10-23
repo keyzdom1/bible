@@ -40,3 +40,7 @@ crash.*.log
 
 # Elastic Beanstalk deploy bundles
 build/*.zip
+
+# Staged copy of the content packages for the Vercel API function bundle
+# (scripts/stage-vercel-content.mjs); the canonical files live in content/packages
+apps/api/content/

@@ -21,6 +21,39 @@ describe("per-version feature flags", () => {
   });
 });
 
+describe("production content delivery", () => {
+  const production = {
+    NODE_ENV: "production",
+    SESSION_SECRET: "test-session-secret-at-least-32-characters",
+    DOWNLOAD_TOKEN_SECRET: "test-download-secret-at-least-32-characters",
+    COGNITO_REGION: "us-east-1",
+    COGNITO_USER_POOL_ID: "us-east-1_TEST",
+    COGNITO_CLIENT_ID: "testclient",
+  };
+
+  it("requires CloudFront delivery in production by default", () => {
+    expect(() => loadConfig(production)).toThrowError(/CONTENT_DELIVERY_MODE=cloudfront/);
+  });
+
+  it("rejects local delivery in production without an explicit package directory", () => {
+    expect(() => loadConfig({ ...production, CONTENT_DELIVERY_MODE: "local" })).toThrowError(
+      /CONTENT_PACKAGE_DIR is set explicitly/,
+    );
+  });
+
+  it("accepts local delivery in production with an explicit package directory", () => {
+    // The serverless case: verified packages are bundled into the function and
+    // served by the API itself (see apps/api/vercel.json).
+    const config = loadConfig({
+      ...production,
+      CONTENT_DELIVERY_MODE: "local",
+      CONTENT_PACKAGE_DIR: "content/packages",
+    });
+    expect(config.contentDeliveryMode).toBe("local");
+    expect(config.contentPackageDir).toBe(resolve("content/packages"));
+  });
+});
+
 describe("CloudFront signed URLs", () => {
   it("signs one resource with a custom policy that expires at the requested time", () => {
     const { publicKey, privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });

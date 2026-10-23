@@ -174,8 +174,15 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     throw new Error("Either Cognito configuration or AUTH_DEV_MODE=true is required");
   }
 
-  if (isProduction && raw.CONTENT_DELIVERY_MODE !== "cloudfront") {
-    throw new Error("CONTENT_DELIVERY_MODE=cloudfront is required in production");
+  // Production normally serves packages through CloudFront. Local delivery is
+  // accepted only when the package directory is stated explicitly — the
+  // serverless case, where verified packages are bundled into the function
+  // itself (e.g. Vercel). An accidental local-mode production deploy with no
+  // deliberate directory is still rejected.
+  if (isProduction && raw.CONTENT_DELIVERY_MODE !== "cloudfront" && !raw.CONTENT_PACKAGE_DIR) {
+    throw new Error(
+      "CONTENT_DELIVERY_MODE=cloudfront is required in production unless CONTENT_PACKAGE_DIR is set explicitly",
+    );
   }
 
   let cloudFront: CloudFrontConfig | undefined;

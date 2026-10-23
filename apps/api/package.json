@@ -8,9 +8,10 @@
     "build": "nest build",
     "dev": "nest start --watch",
     "start": "node dist/main.js",
+    "vercel-build": "pnpm --filter @holyword/core --filter @holyword/db build && node ../../scripts/stage-vercel-content.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --runInBand",
-    "lint": "eslint src test"
+    "lint": "eslint src test api"
   },
   "dependencies": {
     "@holyword/core": "workspace:*",
